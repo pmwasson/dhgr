@@ -1,0 +1,361 @@
+ca65 V2.19 - Git 0f4cb44
+Main file   : ..\src\dhgr.asm
+Current file: ..\src\dhgr.asm
+
+000000r 1               ;-----------------------------------------------------------------------------
+000000r 1               ; Paul Wasson - 2021
+000000r 1               ;-----------------------------------------------------------------------------
+000000r 1               ; DHGR BW Demo
+000000r 1               ;
+000000r 1               
+000000r 1               ;------------------------------------------------
+000000r 1               ; Constants
+000000r 1               ;------------------------------------------------
+000000r 1               
+000000r 1               .include "defines.asm"
+000000r 2               ;-----------------------------------------------------------------------------
+000000r 2               ; Paul Wasson - 2021
+000000r 2               ;-----------------------------------------------------------------------------
+000000r 2               ; Predefined memory/ROM locations
+000000r 2               ;
+000000r 2               ; Mostly added as needed
+000000r 2               ; Tried to use standard names if known
+000000r 2               ;-----------------------------------------------------------------------------
+000000r 2               
+000000r 2               ; Grab ca65 defines to start with and then add missing ones
+000000r 2               .include "apple2.inc"
+000000r 3               
+000000r 3               ;-----------------------------------------------------------------------------
+000000r 3               ; Zero page
+000000r 3               
+000000r 3               WNDLFT  :=      $20     ; Text window left
+000000r 3               WNDWDTH :=      $21     ; Text window width
+000000r 3               WNDTOP  :=      $22     ; Text window top
+000000r 3               WNDBTM  :=      $23     ; Text window bottom+1
+000000r 3               CH      :=      $24     ; Cursor horizontal position
+000000r 3               CV      :=      $25     ; Cursor vertical position
+000000r 3               BASL    :=      $28     ; Text base address low
+000000r 3               BASH    :=      $29     ; Text base address high
+000000r 3               INVFLG  :=      $32     ; Normal/inverse(/flash)
+000000r 3               PROMPT  :=      $33     ; Used by GETLN
+000000r 3               RNDL    :=      $4E     ; Random counter low
+000000r 3               RNDH    :=      $4F     ; Random counter high
+000000r 3               HIMEM   :=      $73     ; Highest available memory address+1
+000000r 3               CURLIN  :=      $75     ; Current line number being executed
+000000r 3               
+000000r 3               ;-----------------------------------------------------------------------------
+000000r 3               ; Vectors
+000000r 3               
+000000r 3               DOSWARM :=      $03D0   ; DOS warmstart vector
+000000r 3               BRKVec  :=      $03F0   ; Break vector
+000000r 3               SOFTEV  :=      $03F2   ; Vector for warm start
+000000r 3               PWREDUP :=      $03F4   ; This must be = EOR #$A5 of SOFTEV+1
+000000r 3               
+000000r 3               ;-----------------------------------------------------------------------------
+000000r 3               ; Hardware
+000000r 3               
+000000r 3               ; Keyboard input
+000000r 3               KBD     :=      $C000   ; Read keyboard
+000000r 3               KBDSTRB :=      $C010   ; Clear keyboard strobe
+000000r 3               
+000000r 3               ; 80 column video
+000000r 3               CLR80COL:=      $C000   ; Disable 80 column store
+000000r 3               SET80COL:=      $C001   ; Enable 80 column store
+000000r 3               RD80COL :=      $C018   ; >127 if 80 column store enabled
+000000r 3               RD80VID :=      $C01F   ; >127 if 80 column video enabled
+000000r 3               
+000000r 3               ; Character set
+000000r 3               CLRALTCHAR :=   $C00E   ; Normal Apple II char set
+000000r 3               SETALTCHAR :=   $C00F   ; Norm/inv LC, no flash
+000000r 3               ALTCHARSET :=   $C01E   ; >127 if alt charset switched in
+000000r 3               
+000000r 3               ; Language card
+000000r 3               RDLCBNK2:=      $C011   ; >127 if LC bank 2 in use
+000000r 3               RDLCRAM :=      $C012   ; >127 if LC is read enabled
+000000r 3               ROMIN   :=      $C081   ; Swap in D000-FFFF ROM
+000000r 3               LCBANK2 :=      $C083   ; Swap in LC bank 2
+000000r 3               LCBANK1 :=      $C08B   ; Swap in LC bank 1
+000000r 3               
+000000r 3               ; Vertical blanking
+000000r 3               RDVBLBAR    :=  $C019   ; >127 if not vertical blanking
+000000r 3               RDVBLMSK    :=  $C041   ; >127 if VBL interrupts enabled
+000000r 3               DISVBL      :=  $C05A   ; Disable VBL interrupts
+000000r 3               ENVBL       :=  $C05B   ; Enable VBL interrupts
+000000r 3               
+000000r 3               ; Video mode
+000000r 3               TXTCLR      :=  $C050   ; Display graphics
+000000r 3               TXTSET      :=  $C051   ; Display text
+000000r 3               MIXCLR      :=  $C052   ; Disable 4 lines of text
+000000r 3               MIXSET      :=  $C053   ; Enable 4 lines of text
+000000r 3               LOWSCR      :=  $C054   ; Page 1
+000000r 3               HISCR       :=  $C055   ; Page 2
+000000r 3               LORES       :=  $C056   ; Lores graphics
+000000r 3               HIRES       :=  $C057   ; Hires graphics
+000000r 3               DHIRESON    :=  $C05E   ; Enable double-width graphics
+000000r 3               DHIRESOFF   :=  $C05F   ; Disable double-width graphics
+000000r 3               
+000000r 3               ; Game controller
+000000r 3               TAPEIN  :=      $C060   ; Read casette input / Switch input 3
+000000r 3               BUTN0   :=      $C061   ; Switch input 0 / Open-Apple key
+000000r 3               BUTN1   :=      $C062   ; Switch input 1 / Closed-Apple key
+000000r 3               BUTN2   :=      $C063   ; Switch input 2 / Shift key
+000000r 3               PADDL0  :=      $C064   ; Analog input 0
+000000r 3               PADDL1  :=      $C065   ; Analog input 1
+000000r 3               PADDL2  :=      $C066   ; Analog input 2
+000000r 3               PADDL3  :=      $C067   ; Analog input 3
+000000r 3               PTRIG   :=      $C070   ; Analog input reset
+000000r 3               
+000000r 3               ; Input/Output Unit
+000000r 3               IOUDISON    :=  $C07E   ; Disable IOU
+000000r 3               IOUDISOFF   :=  $C07F   ; Enable IOU
+000000r 3               
+000000r 3               ; Control Your Apple
+000000r 3               CYAREG  :=      $C036   ; Bits 0-3=disk detect 4=shadow all banks 7=fast
+000000r 3               
+000000r 2               
+000000r 2               ; Memory map
+000000r 2               HGRPAGE1        := $2000
+000000r 2               HGRPAGE2        := $4000
+000000r 2               
+000000r 2               ; Soft switches
+000000r 2               RAMWRTOFF       := $C004
+000000r 2               RAMWRTON        := $C005
+000000r 2               SPEAKER         := $C030
+000000r 2               TEXTMODE        := $C01A    ; Bit 7 is 1 if text mode
+000000r 2               ALTCHARSETOFF   := $C00E    ; Write to turn off alternate characters
+000000r 2               ALTCHARSETON    := $C00F    ; Write to turn on alternate characters
+000000r 2               PAGE2           := $C01C    ; Bit 7 set if displaying page 2
+000000r 2               BUTTON0 		:= $C061 	; Bit 7 set if paddle button 0 is pressed
+000000r 2               BUTTON1 		:= $C062 	; Bit 7 set if paddle button 1 is pressed
+000000r 2               BUTTON2 		:= $C063 	; Bit 7 set if paddle button 2 is pressed
+000000r 2               
+000000r 2               ; ROM routines
+000000r 2               GR              := $F390    ; Low-res mixed graphics mode
+000000r 2               TEXT            := $F399    ; Text-mode
+000000r 2               HGR             := $F3E2    ; Turn on hi-res mode, page 1 mixed mode, clear
+000000r 2               HGR2            := $F3D8    ; Turn on hi-res mode, page 2, clear
+000000r 2               PRBYTE          := $FDDA    ; Print A as a 2-digit hex
+000000r 2               PRINTXY         := $F940    ; Print X(low) Y(high) as 4-digit hex
+000000r 2               VTAB            := $FC22    ; Move the cursor to line CV
+000000r 2               HOME            := $FC58    ; Clear text screen
+000000r 2               CR              := $FC62    ; Output carriage return
+000000r 2               RDKEY           := $FD0C    ; Read 1 char
+000000r 2               COUT            := $FDED    ; Output a character
+000000r 2               MON             := $FF65    ; Enter monitor (BRK)
+000000r 2               MONZ            := $FF69    ; Enter monitor
+000000r 2               WAIT            := $FCA8    ; Wait 0.5*(26 + 27*A + 5*A*A) microseconds
+000000r 2               PREAD 			:= $FB1E    ; Read paddle X (0=hor,1=vert on joystick), result in Y
+000000r 2               
+000000r 1               .include "macros.asm"
+000000r 2               ;-----------------------------------------------------------------------------
+000000r 2               ; Paul Wasson - 2021
+000000r 2               ;-----------------------------------------------------------------------------
+000000r 2               ; Macros
+000000r 2               ;-----------------------------------------------------------------------------
+000000r 2               
+000000r 2               
+000000r 2               .macro  SpriteInfo w,h
+000000r 2                       .res    (64-2)-w*h
+000000r 2                       .byte   w,h
+000000r 2               .endmacro
+000000r 2               
+000000r 2               .macro  StringInv s
+000000r 2                       .repeat .strlen(s), I
+000000r 2                       .byte   .strat(s, I) & $3f
+000000r 2                       .endrep
+000000r 2               .endmacro
+000000r 2               
+000000r 2               .macro  StringHi s
+000000r 2                       .repeat .strlen(s), I
+000000r 2                       .byte   .strat(s, I) | $80
+000000r 2                       .endrep
+000000r 2               .endmacro
+000000r 2               
+000000r 2               .macro  StringHiBG s,bg
+000000r 2                       .repeat .strlen(s), I
+000000r 2                       .if(.strat(s,I) = bg)
+000000r 2                       .byte 0
+000000r 2                       .else
+000000r 2                       .byte   .strat(s, I) | $80
+000000r 2                       .endif
+000000r 2                       .endrep
+000000r 2               .endmacro
+000000r 2               
+000000r 2               ; Converts @ to " for ASCII art
+000000r 2               .macro  StringQuote s
+000000r 2                       .repeat .strlen(s), I
+000000r 2                       .if(.strat(s,I) = '@')
+000000r 2                       .byte '"' | $80
+000000r 2                       .else
+000000r 2                       .byte   .strat(s, I) | $80
+000000r 2                       .endif
+000000r 2                       .endrep
+000000r 2               .endmacro
+000000r 2               
+000000r 2               ; also adds a return to the end of each line
+000000r 2               .macro  StringQuoteReturn s
+000000r 2                       StringQuote s
+000000r 2                       .byte   13
+000000r 2               .endmacro
+000000r 2               
+000000r 2               ; Converts B to inverse-space and % to inverse _
+000000r 2               .macro  StringBlock s
+000000r 2                       .repeat .strlen(s), I
+000000r 2                       .if(.strat(s,I) = 'B')
+000000r 2                       .byte ' '
+000000r 2                       .elseif(.strat(s,I) = '%')
+000000r 2                       .byte '_' & $1f
+000000r 2                       .else
+000000r 2                       .byte   .strat(s, I) | $80
+000000r 2                       .endif
+000000r 2                       .endrep
+000000r 2               .endmacro
+000000r 2               
+000000r 2               ; also adds a return to the end of each line
+000000r 2               .macro  StringBlockReturn s
+000000r 2                       StringBlock s
+000000r 2                       .byte   $8d
+000000r 2               .endmacro
+000000r 2               
+000000r 1               
+000000r 1               ;------------------------------------------------
+000000r 1               ; Zero page usage
+000000r 1               ;------------------------------------------------
+000000r 1               
+000000r 1               ; Safe zero page locations from Inside the Apple IIe:
+000000r 1               ;
+000000r 1               ;                         $06 $07
+000000r 1               ; $08 $09
+000000r 1               ;     $19 $1A $1B $1C $1D $1E
+000000r 1               ;                         $CE $CF
+000000r 1               ;                             $D7
+000000r 1               ;             $E3
+000000r 1               ; $E8
+000000r 1               ;                 $EC $ED $EE $EF
+000000r 1               ;         $FA $FB $FC $FD $FE $FF
+000000r 1               ;
+000000r 1               ; Reserve $FE/$FF for inline print
+000000r 1               
+000000r 1               spritePtr0      :=  $06     ; Sprite pointer
+000000r 1               spritePtr1      :=  $07
+000000r 1               screenPtr0      :=  $08     ; Screen pointer
+000000r 1               screenPtr1      :=  $09
+000000r 1               
+000000r 1               color           =   14
+000000r 1               color0          =   $7f & (color + color<<4)
+000000r 1               color1          =   $7f & (color>>3 + color<<1 + color<<5)
+000000r 1               color2          =   $7f & (color>>2 + color<<2 + color<<6)
+000000r 1               color3          =   $7f & (color>>1 + color<<3)
+000000r 1               
+000000r 1               .segment "CODE"
+000000r 1               .org    $C00
+000C00  1               
+000C00  1               .proc main
+000C00  1               
+000C00  1  20 52 0C         jsr     init
+000C03  1               
+000C03  1  8D 01 C0         sta     SET80COL
+000C06  1               
+000C06  1  8D 55 C0         sta     HISCR
+000C09  1  A9 6E            lda     #color0
+000C0B  1  8D 98 0C         sta     colorA
+000C0E  1  A9 3B            lda     #color2
+000C10  1  8D 99 0C         sta     colorB
+000C13  1  20 31 0C         jsr     clearScreen
+000C16  1               
+000C16  1  8D 54 C0         sta     LOWSCR
+000C19  1  A9 5D            lda     #color1
+000C1B  1  8D 98 0C         sta     colorA
+000C1E  1  A9 77            lda     #color3
+000C20  1  8D 99 0C         sta     colorB
+000C23  1  20 31 0C         jsr     clearScreen
+000C26  1               
+000C26  1                   ; wait for keypress
+000C26  1               :
+000C26  1  AD 00 C0         lda     KBD
+000C29  1  10 FB            bpl     :-
+000C2B  1               
+000C2B  1  8D 51 C0         sta     TXTSET
+000C2E  1               
+000C2E  1                   ; exit
+000C2E  1  4C 69 FF         jmp     MONZ
+000C31  1               
+000C31  1               .endproc
+000C31  1               
+000C31  1               .proc clearScreen
+000C31  1  A9 00            lda     #$00
+000C33  1  85 08            sta     screenPtr0
+000C35  1  A9 20            lda     #$20
+000C37  1  85 09            sta     screenPtr1
+000C39  1               
+000C39  1               loop:
+000C39  1  A0 00            ldy     #0
+000C3B  1               xloop:
+000C3B  1  AD 98 0C         lda     colorA
+000C3E  1  91 08            sta     (screenPtr0),y
+000C40  1  C8               iny
+000C41  1  AD 99 0C         lda     colorB
+000C44  1  91 08            sta     (screenPtr0),y
+000C46  1  C8               iny
+000C47  1  D0 F2            bne     xloop
+000C49  1               
+000C49  1  E6 09            inc     screenPtr1
+000C4B  1  A9 40            lda     #$40
+000C4D  1  C5 09            cmp     screenPtr1
+000C4F  1  D0 E8            bne     loop
+000C51  1  60               rts
+000C52  1               
+000C52  1               .endproc
+000C52  1               
+000C52  1               .proc init
+000C52  1  20 00 C3         jsr   $c300         ; 80-column firmware
+000C55  1  20 58 FC         jsr   $fc58
+000C58  1               
+000C58  1  8D 52 C0         sta     MIXCLR      ; Full Screen
+000C5B  1  8D 57 C0         sta     HIRES       ; Hi-res
+000C5E  1  8D 50 C0         sta     TXTCLR      ; Graphics
+000C61  1  8D 54 C0         sta     LOWSCR      ; Display page 1
+000C64  1  8D 5E C0         sta     DHIRESON    ; Annunciator 2 On
+000C67  1               
+000C67  1  8D 01 C0         sta     SET80COL    ; 80STOREON (c000 = off)
+000C6A  1               
+000C6A  1  60               rts
+000C6B  1               
+000C6B  1               .endproc
+000C6B  1               
+000C6B  1               
+000C6B  1               .proc init_bw
+000C6B  1               
+000C6B  1               ; Not sure how this code works, but we end up in DHGR B&W mode
+000C6B  1               ; Code provided by Antoine Vignau.  Thank you!
+000C6B  1               
+000C6B  1  20 00 C3         jsr   $c300         ; 80-column firmware
+000C6E  1  20 58 FC         jsr   $fc58
+000C71  1               
+000C71  1                   ; FORCE MONOCHROME 560*192
+000C71  1  8D 52 C0         sta     MIXCLR      ; Full Screen
+000C74  1  8D 57 C0         sta     HIRES       ; Hi-res
+000C77  1  8D 50 C0         sta     TXTCLR      ; Graphics
+000C7A  1  8D 54 C0         sta     LOWSCR      ; Display page 1
+000C7D  1               
+000C7D  1  A2 02            ldx     #2          ; Do it twice?
+000C7F  1               DCKD:
+000C7F  1  8D 01 C0         sta     SET80COL    ; 80STOREON (c000 = off)
+000C82  1  8D 5E C0         sta     DHIRESON    ; Annunciator 2 On
+000C85  1  8D 0C C0         sta     $c00c       ; 40-columns
+000C88  1  8D 5E C0         sta     $c05e       ; double hi-res on
+000C8B  1  8D 5F C0         sta     $c05f       ; double hi-res off
+000C8E  1  8D 0D C0         sta     $c00d       ; 80-columns
+000C91  1  8D 5E C0         sta     $c05e       ; double hi-res on
+000C94  1  CA               dex
+000C95  1  D0 E8            bne     DCKD
+000C97  1               
+000C97  1  60               rts
+000C98  1               
+000C98  1               .endproc
+000C98  1               
+000C98  1  6E           colorA:     .byte   color0
+000C99  1  5D           colorB:     .byte   color1
+000C9A  1  3B           colorC:     .byte   color2
+000C9B  1  77           colorD:     .byte   color3
+000C9B  1               

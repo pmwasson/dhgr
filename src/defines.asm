@@ -15,6 +15,8 @@ HGRPAGE1        := $2000
 HGRPAGE2        := $4000
 
 ; Soft switches
+RAMWRTOFF       := $C004
+RAMWRTON        := $C005
 SPEAKER         := $C030
 TEXTMODE        := $C01A    ; Bit 7 is 1 if text mode
 ALTCHARSETOFF   := $C00E    ; Write to turn off alternate characters
