@@ -47,20 +47,8 @@ color3          =   $7f & (color>>1 + color<<3)
 
     jsr     init
 
-    sta     SET80COL 
+    sta     CLR80COL 
 
-    sta     HISCR
-    lda     #color0
-    sta     colorA
-    lda     #color2
-    sta     colorB
-    jsr     clearScreen
-
-    sta     LOWSCR
-    lda     #color1
-    sta     colorA
-    lda     #color3
-    sta     colorB
     jsr     clearScreen
 
     ; wait for keypress
@@ -83,14 +71,26 @@ color3          =   $7f & (color>>1 + color<<3)
 
 loop:
     ldy     #0
-xloop:
+yloop:
+
+    sta     RAMWRTON  
     lda     colorA
     sta     (screenPtr0),y
     iny
+    lda     colorC
+    sta     (screenPtr0),y
+    iny
+    dey
+    dey
+    sta     RAMWRTOFF
     lda     colorB
     sta     (screenPtr0),y
     iny
-    bne     xloop
+    lda     colorD
+    sta     (screenPtr0),y
+    iny
+
+    bne     yloop
 
     inc     screenPtr1
     lda     #$40
