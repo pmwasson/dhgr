@@ -17,6 +17,8 @@ HGRPAGE2        := $4000
 ; Soft switches
 RAMWRTOFF       := $C004
 RAMWRTON        := $C005
+CLR80VID        := $C00C
+SET80VID        := $C00D
 SPEAKER         := $C030
 TEXTMODE        := $C01A    ; Bit 7 is 1 if text mode
 ALTCHARSETOFF   := $C00E    ; Write to turn off alternate characters
@@ -42,3 +44,11 @@ MON             := $FF65    ; Enter monitor (BRK)
 MONZ            := $FF69    ; Enter monitor
 WAIT            := $FCA8    ; Wait 0.5*(26 + 27*A + 5*A*A) microseconds
 PREAD 			:= $FB1E    ; Read paddle X (0=hor,1=vert on joystick), result in Y
+
+; Keyboard
+KEY_LEFT        = $88
+KEY_DOWN        = $8A
+KEY_UP          = $8B
+KEY_RIGHT       = $95
+KEY_ESC         = $9B
+KEY_SPACE       = $A0
