@@ -57,7 +57,7 @@ color           :=  $EB
 ; F - white
 
 .segment "CODE"
-.org    $C00
+.org    $4000
 
 .proc main
 
@@ -79,6 +79,7 @@ color           :=  $EB
     lda     #$55    ; black
     sta     color
     jsr     clearScreen
+    jsr     draw_color_key
 
 command_loop:
     jsr     inline_print
@@ -322,6 +323,36 @@ yloop:
 
 .endproc
 
+;-----------------------------------------------------------------------------
+; Draw color key
+;   Note: uses drawPixel so had to deal with offset
+;-----------------------------------------------------------------------------
+
+.proc draw_color_key
+
+    ; set up coordinates
+    lda     #0
+    sta     curX
+    lda     #17
+    sta     curY
+
+    ; loop through colors
+:
+    ldx     curX
+    lda     colorTable,x
+    sta     color
+    jsr     drawPixel
+    inc     curX
+    lda     curX
+    cmp     #16
+    bne     :-
+
+    lda     #0
+    sta     curX
+    sta     curY
+
+    rts
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; setScreenPtr
@@ -349,9 +380,11 @@ yloop:
 
     ; set screen pointer
     ldx     curY            ; Putting Y in X is confusing, sorry
+    inx                     ; offset by 1
     lda     curX
-    asl                     ; x*2
     clc
+    adc     #1              ; offset by 1
+    asl                     ; x*2
     adc     lineOffset,x    ; lineOffset(curY)
     sta     screenPtr0    
     lda     linePage,x
@@ -476,20 +509,25 @@ waitExit:
 ; drawTile
 ;  Assume 14x16, where 14 is 14*4 pixels = 56 -> 8 bytes
 ;    8*16 = 128, so 2 tiles per page
-;  A = tile #
+;  tileIndex - tile to draw
+;  tileX     - byte offset of tile, should be /4
+;  tileY     - 8-line offset of tile, should be /2
 ;-----------------------------------------------------------------------------
-.proc drawTile
+.proc drawTile_14x16
 
     sta     CLR80COL        ; Use RAMWRT for aux mem
 
-    ; calculate sprite pointer
-    sta     temp0           ; Save a copy of A
-    clc
-    ror                     ; divide by 2
-    sta     tilePtr1
-    lda     #0              ; Calc remainder
+    ; calculate tile pointer
+    lda     tileIndex
+    lsr                     ; *128
+    lda     #0
     ror
     sta     tilePtr0
+    lda     tileIndex
+    lsr                     ; /2
+    clc
+    adc     #>tileSheet_14x16
+    sta     tilePtr1
 
     ; calculate screen pointer
     ldx     tileY
@@ -620,6 +658,94 @@ temp0:  .byte   0
 
 .endproc
 
+;-----------------------------------------------------------------------------
+; drawTile
+;  Assume 7x8, where 7 is 7*4 pixels = 28 -> 4 bytes
+;    4*8 = 32, so 8 tiles per page
+;  tileIndex - tile to draw
+;  tileX     - byte offset of tile, should be /2
+;  tileY     - 8-line offset of tile
+;-----------------------------------------------------------------------------
+.proc drawTile_7x8
+
+    sta     CLR80COL        ; Use RAMWRT for aux mem
+
+    ; calculate tile pointer
+    lda     tileIndex
+    asl                     ; *32
+    asl
+    asl
+    asl
+    asl
+    sta     tilePtr0
+    lda     tileIndex
+    lsr                     ; /8
+    lsr
+    lsr
+    clc
+    adc     #>tileSheet_7x8
+    sta     tilePtr1
+
+    ; calculate screen pointer
+    ldx     tileY
+    lda     tileX
+    clc
+    adc     lineOffset,x    ; + lineOffset
+    sta     screenPtr0    
+    lda     linePage,x
+    sta     screenPtr1
+
+    clc     ; no carry generated inside of loop
+    ldx     #8
+drawLoop1:
+    ; Bytes 0-1 in AUX memory
+    ;
+    sta     RAMWRTON   
+    ldy     #0
+    lda     (tilePtr0),y
+    sta     (screenPtr0),y
+    ldy     #1
+    lda     (tilePtr0),y
+    sta     (screenPtr0),y
+
+    ; Bytes 2-3 in MAIN memory
+    ;
+    sta     RAMWRTOFF
+
+    lda     tilePtr0    ; offset tile pointer by 2
+    adc     #2
+    sta     tilePtr0
+
+    ldy     #0
+    lda     (tilePtr0),y
+    sta     (screenPtr0),y
+    ldy     #1
+    lda     (tilePtr0),y
+    sta     (screenPtr0),y
+
+    ; assumes aligned such that there are no page crossing
+    lda     tilePtr0
+    adc     #2
+    sta     tilePtr0
+
+    lda     screenPtr1
+    adc     #4
+    sta     screenPtr1
+
+    dex
+    bne     drawLoop1
+
+    rts    
+
+; locals
+temp0:  .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Utilies
+
+.include "inline_print.asm"
 
 ; Global Variables
 ;-----------------------------------------------------------------------------
@@ -628,6 +754,7 @@ screenPage: .byte   $20
 screenEnd:  .byte   $40
 tileX:      .byte   0
 tileY:      .byte   0
+tileIndex:  .byte   0
 curX:       .byte   0
 curY:       .byte   0
 
@@ -639,6 +766,8 @@ height_m1:  .byte   15
 
 ; Lookup tables
 ;-----------------------------------------------------------------------------
+
+.align      64
 
 lineOffset:
     .byte   <$2000
@@ -692,7 +821,37 @@ linePage:
     .byte   >$2350
     .byte   >$23D0
 
-;-----------------------------------------------------------------------------
-; Utilies
+colorTable:
+    .byte   $0 * $11
+    .byte   $1 * $11
+    .byte   $2 * $11
+    .byte   $3 * $11
+    .byte   $4 * $11
+    .byte   $5 * $11
+    .byte   $6 * $11
+    .byte   $7 * $11
+    .byte   $8 * $11
+    .byte   $9 * $11
+    .byte   $A * $11
+    .byte   $B * $11
+    .byte   $C * $11
+    .byte   $D * $11
+    .byte   $E * $11
+    .byte   $F * $11
 
-.include "inline_print.asm"
+
+MAX_TILES = 64
+
+; number of tiles should be /8
+.align 256
+tileSheet_7x8:
+    .res    32*MAX_TILES
+
+; number of tiles should be
+.align 256
+tileSheet_14x16:
+    .res    128*MAX_TILES
+
+.align 256
+mapSheet:
+    .res    32*32
