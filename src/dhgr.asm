@@ -34,27 +34,7 @@ tilePtr1        :=  $07
 screenPtr0      :=  $08     ; Screen pointer
 screenPtr1      :=  $09
 
-color           :=  $EB
-
-
-; Colors
-;---------------------
-; 0 - black
-; 1 - dark blue
-; 2 - dark green
-; 3 - medium blue
-; 4 - brown
-; 5 - gray (1)
-; 6 - light green
-; 7 - aqua
-; 8 - red
-; 9 - purple
-; A - gray (2)
-; B - light blue
-; C - orange
-; D - pink
-; E - yellow
-; F - white
+color           :=  $E8
 
 .segment "CODE"
 .org    $4000
@@ -71,15 +51,18 @@ color           :=  $EB
     jsr     inline_print
     .byte   "DHGR tile edit - ? for help",13,0
 
-    jsr     dhgr_init
+    jsr     dhgrInit
 
     ; clear screens
     lda     #$20    ; page1
     sta     screenPage
-    lda     #$55    ; black
+    lda     #$00    ; black
     sta     color
     jsr     clearScreen
-    jsr     draw_color_key
+
+    jsr     drawColorKey
+    jsr     drawPreview
+    jsr     drawTilePixels
 
 command_loop:
     jsr     inline_print
@@ -89,6 +72,21 @@ skip_prompt:
     jsr     getInput    ; Wait for a keypress
 
     ; Parse command
+
+    ;------------------
+    ; ESC = Toggle Text
+    ;------------------
+    cmp     #KEY_ESC
+    bne     :+
+    ; dont display anything
+    lda     TEXTMODE
+    bmi     toggle_text_off
+    bit     TXTSET    
+    jmp     skip_prompt
+toggle_text_off:
+    bit     TXTCLR    
+    jmp     skip_prompt
+:
 
     ;------------------
     ; RIGHT (arrow)
@@ -156,6 +154,238 @@ down_good:
 :
 
     ;------------------
+    ; SP = Set Pixel
+    ;------------------
+    cmp     #KEY_SPACE
+    bne     :+
+    jsr     inline_print
+    .byte   "Set pixel to ",0
+    lda     paintColor
+    and     #$f
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    jsr     setPixelColor
+    jsr     updateTile_14x16
+    jsr     drawPreview
+    jmp     command_loop
+:
+
+    ;------------------
+    ; ^F = Fill Color
+    ;------------------
+    cmp     #KEY_CTRL_F
+    bne     :+
+    jsr     inline_print
+    .byte   "Set all pixels to ",0
+    lda     paintColor
+    and     #$f
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    jsr     fillPixels
+    jsr     updateAll_14x16
+    jsr     drawTilePixels
+    jsr     drawPreview
+    jmp     command_loop
+:
+
+; DHGR Colors
+;---------------------
+; 0 - black
+; 1 - dark blue
+; 2 - dark green
+; 3 - medium blue
+; 4 - brown
+; 5 - gray (1)
+; 6 - light green
+; 7 - aqua
+; 8 - red
+; 9 - purple
+; A - gray (2)
+; B - light blue
+; C - orange
+; D - pink
+; E - yellow
+; F - white
+
+    ;------------------
+    ; 0 = black
+    ;------------------
+    cmp     #$80 | '0'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = black ($0)",13,0
+    lda     #$00
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 1 = dark blue
+    ;------------------
+    cmp     #$80 | '1'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = dark blue ($1)",13,0
+    lda     #$11
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 2 = dark green
+    ;------------------
+    cmp     #$80 | '2'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = dark green ($2)",13,0
+    lda     #$22
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 3 = medium blue
+    ;------------------
+    cmp     #$80 | '3'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = medium blue ($3)",13,0
+    lda     #$33
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 4 = brown
+    ;------------------
+    cmp     #$80 | '4'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = brown ($4)",13,0
+    lda     #$44
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 5 = gray (1)
+    ;------------------
+    cmp     #$80 | '5'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = gray-1 ($5)",13,0
+    lda     #$55
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 6 = light green
+    ;------------------
+    cmp     #$80 | '6'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = light green ($6)",13,0
+    lda     #$66
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 7 = Aqua
+    ;------------------
+    cmp     #$80 | '7'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = aqua ($7)",13,0
+    lda     #$77
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 8 = Red
+    ;------------------
+    cmp     #$80 | '8'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = red ($8)",13,0
+    lda     #$88
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; 9 = Purple
+    ;------------------
+    cmp     #$80 | '9'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = purple ($9)",13,0
+    lda     #$99
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; A = Gray (2)
+    ;------------------
+    cmp     #$80 | 'A'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = gray-2 ($A)",13,0
+    lda     #$AA
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; B = Light blue
+    ;------------------
+    cmp     #$80 | 'B'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = light blue ($B)",13,0
+    lda     #$BB
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; C = Orange
+    ;------------------
+    cmp     #$80 | 'C'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = orange ($C)",13,0
+    lda     #$CC
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; D = Pink
+    ;------------------
+    cmp     #$80 | 'D'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = pink ($D)",13,0
+    lda     #$DD
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; E = Yellow
+    ;------------------
+    cmp     #$80 | 'E'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = yellow ($E)",13,0
+    lda     #$EE
+    jmp     finish_color    
+:
+
+    ;------------------
+    ; F = white
+    ;------------------
+    cmp     #$80 | 'F'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = white ($F)",13,0
+    lda     #$FF
+    jmp     finish_color    
+:
+
+    ;------------------
     ; Q = QUIT
     ;------------------
     cmp     #$80 | 'Q'
@@ -164,40 +394,6 @@ down_good:
     .byte   "Quit",13,0
     bit     TXTSET
     jmp     MONZ        ; enter monitor
-:
-
-    ;------------------
-    ; 2 = page 2
-    ;------------------
-    cmp     #$80 | '2'
-    bne     :+
-    jsr     inline_print
-    .byte   "Page 2",13,0
-    sta     CLR80COL    ; Use RAMWRT for aux mem
-    sta     HISCR
-    sta     MIXCLR
-screenPause:
-    lda     KBD
-    bpl     screenPause
-    sta     KBDSTRB
-    sta     LOWSCR
-    sta     MIXSET
-    jmp     command_loop
-:
-
-    ;------------------
-    ; ESC = Toggle Text
-    ;------------------
-    cmp     #KEY_ESC
-    bne     :+
-    ; dont display anything
-    lda     TEXTMODE
-    bmi     toggle_text_off
-    bit     TXTSET    
-    jmp     skip_prompt
-toggle_text_off:
-    bit     TXTCLR    
-    jmp     skip_prompt
 :
 
     ;------------------
@@ -217,6 +413,12 @@ toggle_text_off:
     ;------------------
     jsr     inline_print
     .byte   "Unknown command (? for help)",13,0
+    jmp     command_loop
+
+; jump to after changing color
+finish_color:
+    sta     paintColor
+    jsr     drawPreview
     jmp     command_loop
 
 ; jump to after changing coordinates
@@ -311,7 +513,7 @@ yloop:
 ; Init double hi-res
 ;-----------------------------------------------------------------------------
 
-.proc dhgr_init
+.proc dhgrInit
 
     sta     TXTCLR      ; Graphics
     sta     HIRES       ; Hi-res
@@ -324,11 +526,75 @@ yloop:
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Get pixel color
+;   color = pixel at curX,curY
+;-----------------------------------------------------------------------------
+
+.proc getPixelColor
+
+    lda     curY
+    asl             ; y*16
+    asl
+    asl
+    asl
+    clc
+    adc     curX    ; +x
+    tay
+    lda     pixelData,y
+    sta     color
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Set pixel color
+;   Set pixel at cursor to paint color
+;-----------------------------------------------------------------------------
+
+.proc setPixelColor
+
+    lda     curY
+    asl             ; y*16
+    asl
+    asl
+    asl
+    clc
+    adc     curX    ; +x
+    tay
+    lda     paintColor
+    sta     pixelData,y
+    rts
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; Fill pixels
+;   Set all pixel to paint color
+;-----------------------------------------------------------------------------
+
+.proc fillPixels
+
+    ldx     #0
+    lda     paintColor
+:
+    sta     pixelData,x
+    inx
+    bne     :-
+
+    ; this is setting extra bytes, but no harm
+
+    rts
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
 ; Draw color key
 ;   Note: uses drawPixel so had to deal with offset
 ;-----------------------------------------------------------------------------
 
-.proc draw_color_key
+.proc drawColorKey
 
     ; set up coordinates
     lda     #0
@@ -352,6 +618,97 @@ yloop:
     sta     curY
 
     rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; Draw preview
+;-----------------------------------------------------------------------------
+
+.proc drawPreview
+    
+    ; current paint color
+    jsr     saveCursor  ; save cursor position
+    lda     #15
+    sta     curX
+    lda     #0
+    sta     curY
+    lda     paintColor
+    sta     color
+    jsr     drawPixel
+    jsr     saveCursor  ; restore cursor position
+
+
+    ; large tile
+    lda     #40-8
+    sta     tileX
+    lda     #4
+    sta     tileY
+    jsr drawTile_14x16   
+
+    ; small tile
+    lda     #8
+    sta     tileY
+    jsr drawTile_7x8   
+
+    rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; Draw tile pixels
+;-----------------------------------------------------------------------------
+
+.proc drawTilePixels
+    
+    jsr     saveCursor  ; save cursor position
+
+    lda     #0
+    sta     curY
+
+loopY:
+    lda     #0
+    sta     curX
+
+loopX:
+    jsr     getPixelColor
+    jsr     drawPixel
+
+    inc     curX
+    lda     curX
+    cmp     width
+    bne     loopX
+
+    inc     curY
+    lda     curY
+    cmp     height
+    bne     loopY
+
+    jsr     saveCursor ; restor cursor
+rts
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; Save cursor
+;   Swap between current and backup cursor coordinates
+;-----------------------------------------------------------------------------
+.proc saveCursor
+
+    ldx     curX
+    lda     saveCurX
+    sta     curX
+    stx     saveCurX
+
+    ldx     curY
+    lda     saveCurY
+    sta     curY
+    stx     saveCurY
+
+    rts
+
+saveCurX:   .byte   0
+saveCurY:   .byte   0
+
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -449,7 +806,13 @@ cursor_loop:
     lda     #$FF
     jsr     COUT
 
-    lda     #$ff        ; FIXME cursor color
+    jsr     getPixelColor
+    lda     color
+    lda     #$ff        ; default cursor == white
+    cmp     color       ; if pixel white ...
+    bne     :+
+    lda     #0          ; ... set color to black
+:
     sta     color
     jsr     drawPixel
 
@@ -464,8 +827,7 @@ cursor_loop:
     lda     #$88        ; backspace
     jsr     COUT
 
-    lda     #$00        ; FIXME tile color
-    sta     color
+    jsr     getPixelColor
     jsr     drawPixel
 
     ; check for keypress
@@ -512,6 +874,15 @@ waitExit:
 ;  tileIndex - tile to draw
 ;  tileX     - byte offset of tile, should be /4
 ;  tileY     - 8-line offset of tile, should be /2
+;
+;            0 1 2 3 4 5 6 7 8 9 10 11 12 13 ; 4-bit pixels in 7-bit byes (MSB ignored)
+;            ---   -----   ---   --------
+;              -----   ---   ------    -----
+;  Storage:  000 004 001 005 002 006 003 007 ; line 0
+;            008 012 009 013 010 014 011 015 ; line 1
+;            ..
+;            120 124 121 125 122 126 123 127 ; line 15
+
 ;-----------------------------------------------------------------------------
 .proc drawTile_14x16
 
@@ -665,6 +1036,15 @@ temp0:  .byte   0
 ;  tileIndex - tile to draw
 ;  tileX     - byte offset of tile, should be /2
 ;  tileY     - 8-line offset of tile
+;
+;            0 1 2  3 4 5 6  ; 4-bit pixels in 7-bit byes (MSB ignored)
+;            ---    -----
+;              ------   ---
+;  Storage:  00  02  01  03  ; line 0
+;            04  06  05  07  ; line 1
+;            ..
+;            28  30  29  31  ; line 7
+;
 ;-----------------------------------------------------------------------------
 .proc drawTile_7x8
 
@@ -743,6 +1123,156 @@ temp0:  .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; updateTile
+;  Update the tile pointed to by tileIndex with the current pixel data
+;  To save time, only the 4 bytes pointed to by curX & Y are updated.
+;
+;-----------------------------------------------------------------------------
+
+.proc updateTile_14x16
+    ; set tilePtr to start of tile
+
+    ; calculate tile pointer
+    lda     tileIndex
+    lsr                     ; *128
+    lda     #0
+    ror
+    sta     tilePtr0
+    lda     tileIndex
+    lsr                     ; /2
+    clc
+    adc     #>tileSheet_14x16
+    sta     tilePtr1
+
+    ; tile  y offset = curY * 8 
+    ; pixel y offset = curY * 16 
+    lda     curY
+    asl 
+    asl
+    asl     ; *8
+    sta     tileOffset
+    asl     ; *16
+    sta     pixelOffset
+
+    ; if curX < 7, pixel X offset 0, tile X offset 0 (0,4,1,5)
+    ; else         pixel X offset 7, tile X offset 2 (2,6,3,7)
+
+    lda     curX
+    cmp     #7
+    bmi     :+
+
+    clc
+    lda     tileOffset
+    adc     #2
+    sta     tileOffset
+    lda     pixelOffset
+    adc     #7
+    sta     pixelOffset
+:
+
+    ldx     pixelOffset
+    ldy     tileOffset
+
+    ; Set four bytes based on an offset into the pixel data in X
+    ; X & Y preserved
+    ; byte 0 = x1110000
+    lda     pixelData,x     ; pixel 0 bit 0:3 -> byte 0 bits 0:3
+    and     #%00001111
+    sta     temp
+    lda     pixelData+1,x   ; pixel 1 bits 0:2 -> byte 0 bits 4:6
+    and     #%01110000      ; dont set bit 8
+    ora     temp
+    sta     (tilePtr0),y
+    iny                     ; +1
+
+    ; byte 2 = x5444433
+    lda     pixelData+3,x   ; pixel 3 bits 2:3 -> byte 2 bit 0:1
+    ror
+    ror
+    and     #%00000011
+    sta     temp
+    lda     pixelData+4,x   ; pixel 4 bits 0:3 -> byte 2 bits 2:5
+    rol
+    rol
+    and     #%00111100
+    ora     temp
+    sta     temp
+    lda     pixelData+5,x   ; pixel 5 bit 0 -> byte 2 bit 6
+    rol
+    rol
+    and     #%01000000
+    ora     temp
+    sta     (tilePtr0),y
+    iny
+    iny
+    iny                     ; +4
+
+    ; byte 1 = x3322221
+    lda     pixelData+1,x   ; pixel 1 bit 3 -> byte 1 bit 0
+    rol                     ; put bit 8 into carry
+    lda     pixelData+2,x   ; pixel 2 bit 0:3 -> byte 1 bits 1:4
+    and     #%00001111
+    rol     
+    sta     temp
+    lda     pixelData+3,x   ; pixel 3 bits 0:1 -> byte 1 bits 5:6
+    rol
+    and     #%01100000      ; don't set bit 8
+    ora     temp
+    sta     (tilePtr0),y
+    iny                     ; +5
+
+    ; byte 3 = x6666555
+    lda     pixelData+5,x   ; pixel 5 bit 1:3 -> byte 3 bits 0:2
+    ror
+    and     #%00000111
+    sta     temp
+    lda     pixelData+6,x   ; pixel 6 bits 0:3 -> byte 3 bits 3:6
+    ror
+    and     #%01111000
+    ora     temp
+    sta     (tilePtr0),y
+
+    rts
+
+pixelOffset:    .byte   0
+tileOffset:     .byte   0
+temp:           .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; updateAll
+;  Call update tile for all pixels
+;
+;-----------------------------------------------------------------------------
+
+.proc updateAll_14x16
+
+    jsr     saveCursor
+
+    lda     #0
+    sta     curY
+
+:
+    lda     #0
+    sta     curX
+    jsr     updateTile_14x16
+    lda     #7
+    sta     curX
+    jsr     updateTile_14x16
+
+    inc     curY
+    lda     curY
+    cmp     height
+    bne     :-
+
+    jsr     saveCursor
+
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
 ; Utilies
 
 .include "inline_print.asm"
@@ -758,17 +1288,23 @@ tileIndex:  .byte   0
 curX:       .byte   0
 curY:       .byte   0
 
+paintColor: .byte   $FF
+
 ; Make dimensions a variable incase we want variable tile size
 width:      .byte   14
 width_m1:   .byte   13
 height:     .byte   16
 height_m1:  .byte   15
 
+; Just store 1 pixel per byte and pad out to power of 2
+.align      256
+pixelData:
+    .res    16*16
+
 ; Lookup tables
 ;-----------------------------------------------------------------------------
 
 .align      64
-
 lineOffset:
     .byte   <$2000
     .byte   <$2080
@@ -821,6 +1357,8 @@ linePage:
     .byte   >$2350
     .byte   >$23D0
 
+; Replicate color into both nibbles
+
 colorTable:
     .byte   $0 * $11
     .byte   $1 * $11
@@ -839,6 +1377,9 @@ colorTable:
     .byte   $E * $11
     .byte   $F * $11
 
+
+; Tile Storage
+;---------------------
 
 MAX_TILES = 64
 

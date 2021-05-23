@@ -46,6 +46,8 @@ WAIT            := $FCA8    ; Wait 0.5*(26 + 27*A + 5*A*A) microseconds
 PREAD 			:= $FB1E    ; Read paddle X (0=hor,1=vert on joystick), result in Y
 
 ; Keyboard
+KEY_CTRL_C 		= $83
+KEY_CTRL_F 		= $86
 KEY_LEFT        = $88
 KEY_DOWN        = $8A
 KEY_UP          = $8B
