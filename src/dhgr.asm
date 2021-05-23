@@ -53,16 +53,11 @@ color           :=  $E8
 
     jsr     dhgrInit
 
-    ; clear screens
-    lda     #$20    ; page1
-    sta     screenPage
-    lda     #$00    ; black
-    sta     color
-    jsr     clearScreen
+    ; default size
+    jsr     setSize_7x8
 
-    jsr     drawColorKey
-    jsr     drawPreview
-    jsr     drawTilePixels
+reset_loop:
+    jsr     resetScreen
 
 command_loop:
     jsr     inline_print
@@ -166,7 +161,8 @@ down_good:
     lda     #13
     jsr     COUT
     jsr     setPixelColor
-    jsr     updateTile_14x16
+    lda     size
+    jsr     updateTile
     jsr     drawPreview
     jmp     command_loop
 :
@@ -184,10 +180,32 @@ down_good:
     lda     #13
     jsr     COUT
     jsr     fillPixels
-    jsr     updateAll_14x16
+    jsr     updateAll
     jsr     drawTilePixels
     jsr     drawPreview
     jmp     command_loop
+:
+
+    ;------------------
+    ; ^T = Toggle Size
+    ;------------------
+    cmp     #KEY_CTRL_F
+    bne     :+
+    jsr     inline_print
+    .byte   "Toggle size.  New size: ",0
+    lda     width
+    cmp     #7      ; small
+    beq     set_small
+    ; set large
+    jsr     inline_print
+    .byte   "14x16",13,0
+    jsr     setSize_14x16
+    jmp     reset_loop
+set_small:
+    jsr     inline_print
+    .byte   "7x8",13,0
+    jsr     setSize_7x8
+    jmp     reset_loop
 :
 
 ; DHGR Colors
@@ -450,6 +468,32 @@ finish_move:
     rts
 .endproc
 
+
+
+;-----------------------------------------------------------------------------
+; Reset screen
+;
+;   Clear screen and redraw
+;-----------------------------------------------------------------------------
+
+.proc resetScreen
+
+    ; clear screens
+    lda     #$20    ; page1
+    sta     screenPage
+    lda     #$55    ; black
+    sta     color
+    jsr     clearScreen
+
+    jsr     drawColorKey
+    jsr     drawPreview
+
+    jsr     drawTilePixels
+
+    rts
+.endproc
+
+
 ;-----------------------------------------------------------------------------
 ; DHGR clear screen
 ;
@@ -506,6 +550,8 @@ yloop:
     cmp     screenPtr1
     bne     loop
     rts
+
+screenEnd:      .byte   $40
 
 .endproc
 
@@ -636,7 +682,6 @@ yloop:
     sta     color
     jsr     drawPixel
     jsr     saveCursor  ; restore cursor position
-
 
     ; large tile
     lda     #40-8
@@ -886,19 +931,7 @@ waitExit:
 ;-----------------------------------------------------------------------------
 .proc drawTile_14x16
 
-    sta     CLR80COL        ; Use RAMWRT for aux mem
-
-    ; calculate tile pointer
-    lda     tileIndex
-    lsr                     ; *128
-    lda     #0
-    ror
-    sta     tilePtr0
-    lda     tileIndex
-    lsr                     ; /2
-    clc
-    adc     #>tileSheet_14x16
-    sta     tilePtr1
+    jsr     setTilePointer_14x16
 
     ; calculate screen pointer
     ldx     tileY
@@ -908,6 +941,8 @@ waitExit:
     sta     screenPtr0    
     lda     linePage,x
     sta     screenPtr1
+
+    sta     CLR80COL        ; Use RAMWRT for aux mem
 
     clc     ; no carry generated inside of loop
     ldx     #8
@@ -1029,6 +1064,23 @@ temp0:  .byte   0
 
 .endproc
 
+.proc setTilePointer_14x16
+
+    ; calculate tile pointer
+    lda     tileIndex
+    lsr                     ; *128
+    lda     #0
+    ror
+    sta     tilePtr0
+    lda     tileIndex
+    lsr                     ; /2
+    clc
+    adc     #>tileSheet_14x16
+    sta     tilePtr1
+    rts
+
+.endproc
+
 ;-----------------------------------------------------------------------------
 ; drawTile
 ;  Assume 7x8, where 7 is 7*4 pixels = 28 -> 4 bytes
@@ -1048,23 +1100,9 @@ temp0:  .byte   0
 ;-----------------------------------------------------------------------------
 .proc drawTile_7x8
 
-    sta     CLR80COL        ; Use RAMWRT for aux mem
+    jsr     setTilePointer_7x8
 
-    ; calculate tile pointer
-    lda     tileIndex
-    asl                     ; *32
-    asl
-    asl
-    asl
-    asl
-    sta     tilePtr0
-    lda     tileIndex
-    lsr                     ; /8
-    lsr
-    lsr
-    clc
-    adc     #>tileSheet_7x8
-    sta     tilePtr1
+    sta     CLR80COL        ; Use RAMWRT for aux mem
 
     ; calculate screen pointer
     ldx     tileY
@@ -1122,6 +1160,28 @@ temp0:  .byte   0
 
 .endproc
 
+.proc setTilePointer_7x8
+
+    ; calculate tile pointer
+    lda     tileIndex
+    asl                     ; *32
+    asl
+    asl
+    asl
+    asl
+    sta     tilePtr0
+    lda     tileIndex
+    lsr                     ; /8
+    lsr
+    lsr
+    clc
+    adc     #>tileSheet_7x8
+    sta     tilePtr1
+
+    rts
+
+.endproc
+
 ;-----------------------------------------------------------------------------
 ; updateTile
 ;  Update the tile pointed to by tileIndex with the current pixel data
@@ -1129,21 +1189,71 @@ temp0:  .byte   0
 ;
 ;-----------------------------------------------------------------------------
 
+.proc updateTile
+    lda     size
+    beq     :+
+    jmp     updateTile_14x16
+:
+    jmp     updateTile_7x8
+.endproc
+
 .proc updateTile_14x16
-    ; set tilePtr to start of tile
 
-    ; calculate tile pointer
-    lda     tileIndex
-    lsr                     ; *128
-    lda     #0
-    ror
-    sta     tilePtr0
-    lda     tileIndex
-    lsr                     ; /2
-    clc
-    adc     #>tileSheet_14x16
-    sta     tilePtr1
+    jsr     setTilePointer_14x16
 
+    jsr     updateSetOffsets_14x16
+
+    ldx     pixelOffset
+    jsr     pixelsToBytes
+
+    ldy     tileOffset
+    lda     pixelByte0
+    sta     (tilePtr0),y
+    iny                     ; +1
+    lda     pixelByte2
+    sta     (tilePtr0),y
+    iny
+    iny
+    iny                     ; +4
+    lda     pixelByte1
+    sta     (tilePtr0),y
+    iny                     ; +5
+    lda     pixelByte3
+    sta     (tilePtr0),y
+
+    rts
+
+.endproc
+
+
+.proc updateTile_7x8
+
+    jsr     setTilePointer_7x8
+
+    jsr     updateSetOffsets_7x8
+
+    ldx     pixelOffset
+    jsr     pixelsToBytes
+
+    ldy     tileOffset
+    lda     pixelByte0
+    sta     (tilePtr0),y
+    iny                     ; +1
+    lda     pixelByte2
+    sta     (tilePtr0),y
+    iny                     ; +2
+    lda     pixelByte1
+    sta     (tilePtr0),y
+    iny                     ; +3
+    lda     pixelByte3
+    sta     (tilePtr0),y
+
+    rts
+
+.endproc
+
+
+.proc updateSetOffsets_14x16
     ; tile  y offset = curY * 8 
     ; pixel y offset = curY * 16 
     lda     curY
@@ -1154,7 +1264,7 @@ temp0:  .byte   0
     asl     ; *16
     sta     pixelOffset
 
-    ; if curX < 7, pixel X offset 0, tile X offset 0 (0,4,1,5)
+    ; if curX < 7, pixel X offset 0, tile X offset 0 (0,4,1,5) or (0,2,1,3)
     ; else         pixel X offset 7, tile X offset 2 (2,6,3,7)
 
     lda     curX
@@ -1169,12 +1279,33 @@ temp0:  .byte   0
     adc     #7
     sta     pixelOffset
 :
+    rts
+.endproc
 
-    ldx     pixelOffset
-    ldy     tileOffset
+.proc updateSetOffsets_7x8
+    ; tile  y offset = curY * 4 
+    ; pixel y offset = curY * 16 
+    lda     curY
+    asl 
+    asl     ; *4
+    sta     tileOffset
+    asl 
+    asl     ; *16
+    sta     pixelOffset
+    rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; pixelsToBytes
+;  Generate 4 bytes based on cursor position
+;
+; x = offset into pixel data
+; results saved to global pixelByte0..3
+;-----------------------------------------------------------------------------
+
+.proc pixelsToBytes
 
     ; Set four bytes based on an offset into the pixel data in X
-    ; X & Y preserved
     ; byte 0 = x1110000
     lda     pixelData,x     ; pixel 0 bit 0:3 -> byte 0 bits 0:3
     and     #%00001111
@@ -1182,8 +1313,20 @@ temp0:  .byte   0
     lda     pixelData+1,x   ; pixel 1 bits 0:2 -> byte 0 bits 4:6
     and     #%01110000      ; dont set bit 8
     ora     temp
-    sta     (tilePtr0),y
-    iny                     ; +1
+    sta     pixelByte0
+
+    ; byte 1 = x3322221
+    lda     pixelData+1,x   ; pixel 1 bit 3 -> byte 1 bit 0
+    rol                     ; put bit 8 into carry
+    lda     pixelData+2,x   ; pixel 2 bit 0:3 -> byte 1 bits 1:4
+    and     #%00001111
+    rol     
+    sta     temp
+    lda     pixelData+3,x   ; pixel 3 bits 0:1 -> byte 1 bits 5:6
+    rol
+    and     #%01100000      ; don't set bit 8
+    ora     temp
+    sta     pixelByte1
 
     ; byte 2 = x5444433
     lda     pixelData+3,x   ; pixel 3 bits 2:3 -> byte 2 bit 0:1
@@ -1202,24 +1345,7 @@ temp0:  .byte   0
     rol
     and     #%01000000
     ora     temp
-    sta     (tilePtr0),y
-    iny
-    iny
-    iny                     ; +4
-
-    ; byte 1 = x3322221
-    lda     pixelData+1,x   ; pixel 1 bit 3 -> byte 1 bit 0
-    rol                     ; put bit 8 into carry
-    lda     pixelData+2,x   ; pixel 2 bit 0:3 -> byte 1 bits 1:4
-    and     #%00001111
-    rol     
-    sta     temp
-    lda     pixelData+3,x   ; pixel 3 bits 0:1 -> byte 1 bits 5:6
-    rol
-    and     #%01100000      ; don't set bit 8
-    ora     temp
-    sta     (tilePtr0),y
-    iny                     ; +5
+    sta     pixelByte2
 
     ; byte 3 = x6666555
     lda     pixelData+5,x   ; pixel 5 bit 1:3 -> byte 3 bits 0:2
@@ -1230,21 +1356,28 @@ temp0:  .byte   0
     ror
     and     #%01111000
     ora     temp
-    sta     (tilePtr0),y
+    sta     pixelByte3
 
     rts
 
-pixelOffset:    .byte   0
-tileOffset:     .byte   0
-temp:           .byte   0
+temp:       .byte   0
 
 .endproc
 
 ;-----------------------------------------------------------------------------
-; updateAll
+; Update all
 ;  Call update tile for all pixels
 ;
 ;-----------------------------------------------------------------------------
+
+.proc updateAll
+    lda     size
+    beq     :+
+    jmp     updateAll_14x16
+:
+    jmp     updateAll_7x8
+.endproc
+
 
 .proc updateAll_14x16
 
@@ -1272,6 +1405,64 @@ temp:           .byte   0
 
 .endproc
 
+.proc updateAll_7x8
+
+    jsr     saveCursor
+
+    lda     #0
+    sta     curY
+
+:
+    lda     #0
+    sta     curX
+    jsr     updateTile_7x8
+
+    inc     curY
+    lda     curY
+    cmp     height
+    bne     :-
+
+    jsr     saveCursor
+
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Set size
+;  Call update tile for all pixels
+;
+;-----------------------------------------------------------------------------
+
+.proc setSize_14x16
+    lda     #1
+    sta     size
+    lda     #14
+    sta     width
+    lda     #13
+    sta     width_m1
+    lda     #16
+    sta     height
+    lda     #15
+    sta     height_m1
+    rts
+.endproc
+
+.proc setSize_7x8
+    lda     #0
+    sta     size
+    lda     #7
+    sta     width
+    lda     #6
+    sta     width_m1
+    lda     #8
+    sta     height
+    lda     #7
+    sta     height_m1
+
+    rts
+.endproc
+
 ;-----------------------------------------------------------------------------
 ; Utilies
 
@@ -1280,21 +1471,31 @@ temp:           .byte   0
 ; Global Variables
 ;-----------------------------------------------------------------------------
 
-screenPage: .byte   $20
-screenEnd:  .byte   $40
-tileX:      .byte   0
-tileY:      .byte   0
-tileIndex:  .byte   0
-curX:       .byte   0
-curY:       .byte   0
+screenPage:     .byte   $20
+tileX:          .byte   0
+tileY:          .byte   0
+tileIndex:      .byte   0
+curX:           .byte   0
+curY:           .byte   0
 
-paintColor: .byte   $FF
+paintColor:     .byte   $FF
 
 ; Make dimensions a variable incase we want variable tile size
-width:      .byte   14
-width_m1:   .byte   13
-height:     .byte   16
-height_m1:  .byte   15
+size:           .byte   1   ; 0=7x8, 1=14x16
+width:          .byte   14
+width_m1:       .byte   13
+height:         .byte   16
+height_m1:      .byte   15
+
+
+; Conversion from pixels to bytes
+pixelOffset:    .byte   0
+tileOffset:     .byte   0
+
+pixelByte0:     .byte   0
+pixelByte1:     .byte   0
+pixelByte2:     .byte   0
+pixelByte3:     .byte   0
 
 ; Just store 1 pixel per byte and pad out to power of 2
 .align      256

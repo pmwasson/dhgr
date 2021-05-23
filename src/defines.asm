@@ -51,6 +51,7 @@ KEY_CTRL_F 		= $86
 KEY_LEFT        = $88
 KEY_DOWN        = $8A
 KEY_UP          = $8B
+KEY_CTRL_T 		= $94
 KEY_RIGHT       = $95
 KEY_ESC         = $9B
 KEY_SPACE       = $A0
