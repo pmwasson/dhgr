@@ -56,6 +56,9 @@ color           :=  $E8
     ; default size
     jsr     setSize_7x8
 
+    ; Populate pixels
+    jsr     updatePixels
+
 reset_loop:
     jsr     resetScreen
 
@@ -160,6 +163,7 @@ down_good:
     jsr     PRBYTE
     lda     #13
     jsr     COUT
+    ldx     paintColor
     jsr     setPixelColor
     lda     size
     jsr     updateTile
@@ -189,22 +193,23 @@ down_good:
     ;------------------
     ; ^T = Toggle Size
     ;------------------
-    cmp     #KEY_CTRL_F
+    cmp     #KEY_CTRL_T
     bne     :+
     jsr     inline_print
     .byte   "Toggle size.  New size: ",0
-    lda     width
-    cmp     #7      ; small
-    beq     set_small
-    ; set large
+    lda     size
+    bne     set_small
+; set large
     jsr     inline_print
     .byte   "14x16",13,0
     jsr     setSize_14x16
+    jsr     updatePixels_14x16
     jmp     reset_loop
 set_small:
     jsr     inline_print
     .byte   "7x8",13,0
     jsr     setSize_7x8
+    jsr     updatePixels_7x8
     jmp     reset_loop
 :
 
@@ -462,6 +467,11 @@ finish_move:
     jsr     COUT
     lda     curY
     jsr     PRBYTE
+    jsr     inline_print
+    .byte   " Color:",0
+    jsr     getPixelColor
+    and     #%00001111
+    jsr     PRBYTE
     lda     #13
     jsr     COUT
     jmp     command_loop
@@ -512,7 +522,7 @@ dump_loop:
     cmp     length
     beq     dump_finish
     lda     dump_count
-    and     #$7
+    and     #$f
     bne     dump_comma
     jsr     inline_print
     .byte   13,".byte ",0
@@ -651,7 +661,7 @@ screenEnd:      .byte   $40
 
 ;-----------------------------------------------------------------------------
 ; Set pixel color
-;   Set pixel at cursor to paint color
+;   Set pixel at cursor to the value in X
 ;-----------------------------------------------------------------------------
 
 .proc setPixelColor
@@ -664,7 +674,7 @@ screenEnd:      .byte   $40
     clc
     adc     curX    ; +x
     tay
-    lda     paintColor
+    txa
     sta     pixelData,y
     rts
 
@@ -1436,6 +1446,244 @@ temp:       .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Update pixels
+;  Populate pixel array from shape table bytes
+;-----------------------------------------------------------------------------
+
+.proc updatePixels
+    lda     size
+    beq     :+
+    jmp     updatePixels_14x16
+:
+    jmp     updatePixels_7x8
+.endproc
+
+
+.proc updatePixels_7x8
+
+    jsr     saveCursor
+    jsr     setTilePointer_7x8
+
+    lda     #0
+    sta     curY
+    sta     tempIndex
+
+yloop:
+    lda     #0
+    sta     curX
+
+    ; read 4 bytes - bytes are interleaved
+    ldy     tempIndex
+    lda     (tilePtr0),y
+    sta     pixelByte0
+    iny
+    lda     (tilePtr0),y
+    sta     pixelByte2
+    iny
+    lda     (tilePtr0),y
+    sta     pixelByte1
+    iny
+    lda     (tilePtr0),y
+    sta     pixelByte3
+    iny
+    sty     tempIndex
+
+    jsr     bytesToPixels
+
+    inc     curY
+    lda     curY
+    cmp     #8
+    bne     yloop
+
+    jsr     saveCursor  ; restore cursor
+    rts
+
+tempIndex:  .byte   0
+
+.endproc
+
+.proc updatePixels_14x16
+
+    jsr     saveCursor
+    jsr     setTilePointer_14x16
+
+    lda     #0
+    sta     curY
+    sta     tempIndex
+
+yloop:
+    lda     #0
+    sta     curX
+
+    ; read 4 bytes - bytes are interleaved
+    ; first 4 are at y 0, 4, 1, 5
+
+    ldy     tempIndex
+    lda     (tilePtr0),y
+    sta     pixelByte0
+    iny     ; +1
+    lda     (tilePtr0),y
+    sta     pixelByte2
+    iny     ; +2
+    iny     ; +3
+    iny     ; +4
+    lda     (tilePtr0),y
+    sta     pixelByte1
+    iny     ; +5
+    lda     (tilePtr0),y
+    sta     pixelByte3
+    dey     ; 4
+    dey     ; 3
+    dey     ; 2
+    sty     tempIndex
+
+    jsr     bytesToPixels
+
+    ; next 4 are at y 2, 6, 3, 7
+
+    ldy     tempIndex
+    lda     (tilePtr0),y
+    sta     pixelByte0
+    iny     ; +3
+    lda     (tilePtr0),y
+    sta     pixelByte2
+    iny     ; +4
+    iny     ; +5
+    iny     ; +6
+    lda     (tilePtr0),y
+    sta     pixelByte1
+    iny     ; +7
+    lda     (tilePtr0),y
+    sta     pixelByte3
+    iny     ; +8 -> next row
+    sty     tempIndex
+
+    inc     curY
+    lda     curY
+    cmp     #16
+    bne     yloop
+
+    jsr     saveCursor  ; restore cursor
+    rts
+
+tempIndex:  .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Bytes to pixels
+;  Convert 4 bytes into pixel data using curX & Y
+;-----------------------------------------------------------------------------
+
+.proc bytesToPixels
+
+    ; Pixel 0 - byte0 xxxx0000
+    lda     pixelByte0
+    and     #%00001111
+    tay
+    lda     colorTable,y    ; replicate nibbles
+    tax
+    jsr     setPixelColor
+    inc     curX
+
+    ; Pixel 1 - byte1,0 xxxxxxx1 x111xxxx
+    lda     pixelByte0
+    ror
+    ror                     
+    ror
+    ror
+    and     #%00000111
+    sta     temp
+    lda     pixelByte1
+    rol
+    rol
+    rol
+    and     #%00001000
+    ora     temp
+    tay
+    lda     colorTable,y    ; replicate nibbles
+    tax
+    jsr     setPixelColor
+    inc     curX
+
+    ; Pixel 2 - byte1 xxx2222x
+    lda     pixelByte1
+    ror
+    and     #%00001111
+    tay
+    lda     colorTable,y    ; replicate nibbles
+    tax
+    jsr     setPixelColor
+    inc     curX
+
+
+    ; Pixel 3 - byte2,1 xxxxxx33 x33xxxxx
+    lda     pixelByte1
+    rol     ; 4 rotate left (would be 5 ror)
+    rol
+    rol
+    rol
+    and     #%00000011
+    sta     temp
+    lda     pixelByte2
+    rol
+    rol
+    and     #%00001100
+    ora     temp
+    tay
+    lda     colorTable,y    ; replicate nibbles
+    tax
+    jsr     setPixelColor
+    inc     curX
+
+    ; Pixel 4 - byte2 xx4444xx
+    lda     pixelByte2
+    ror
+    ror    
+    and     #%00001111
+    tay
+    lda     colorTable,y    ; replicate nibbles
+    tax
+    jsr     setPixelColor
+    inc     curX
+
+    ; Pixel 5 - byte3,2 xxxxx555 x5xxxxxx
+    lda     pixelByte2
+    rol     ; shifting left through carry is 3 instruction, right would be 5
+    rol
+    rol
+    and     #%00000001
+    sta     temp
+    lda     pixelByte3
+    rol
+    and     #%00001110
+    ora     temp
+    tay
+    lda     colorTable,y    ; replicate nibbles
+    tax
+    jsr     setPixelColor
+    inc     curX
+
+    ; Pixel 6 - byte3 x6666xxx
+    lda     pixelByte3
+    ror
+    ror    
+    ror    
+    and     #%00001111
+    tay
+    lda     colorTable,y    ; replicate nibbles
+    tax
+    jsr     setPixelColor
+    inc     curX
+
+    rts
+
+temp:       .byte   0
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
 ; Update all
 ;  Call update tile for all pixels
 ;
@@ -1664,7 +1912,7 @@ MAX_TILES = 64
 .align 256
 tileSheet_7x8:
     ; upper-left
-    .byte   $00,$00,$00,$00,$00,$00,$00,$00                                           
+    .byte   $0f,$00,$00,$00,$00,$00,$00,$00                                           
     .byte   $00,$55,$20,$2A,$00,$55,$2A,$2A                                           
     .byte   $00,$55,$2A,$2A,$00,$55,$2A,$2A                                           
     .byte   $00,$15,$2A,$00,$00,$15,$2A,$00                                           
