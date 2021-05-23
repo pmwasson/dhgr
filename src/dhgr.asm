@@ -403,6 +403,19 @@ set_small:
     jmp     finish_color    
 :
 
+
+    ;------------------
+    ; D = Dump
+    ;------------------
+    cmp     #$80 + '!' 
+    bne     :+
+    bit     TXTSET
+    jsr     inline_print
+    .byte   "Dump (ESC when done) ",13,0
+    jsr     printDump
+    jmp     command_loop
+:
+
     ;------------------
     ; Q = QUIT
     ;------------------
@@ -469,6 +482,50 @@ finish_move:
 .endproc
 
 
+;-----------------------------------------------------------------------------
+; printDump
+;-----------------------------------------------------------------------------
+.proc printDump
+
+    jsr     setTilePointer
+
+    ldx     tilePtr0
+    ldy     tilePtr1
+    jsr     PRINTXY
+    jsr     inline_print
+    .byte   ":",13,".byte ",0
+
+    lda     #0
+    sta     dump_count
+    jmp     dump_loop
+dump_comma:
+    lda     #$80 + ','
+    jsr     COUT
+dump_loop:
+    lda     #$80 + '$'
+    jsr     COUT
+    ldy     dump_count
+    lda     (tilePtr0),y
+    jsr     PRBYTE
+    inc     dump_count
+    lda     dump_count
+    cmp     length
+    beq     dump_finish
+    lda     dump_count
+    and     #$7
+    bne     dump_comma
+    jsr     inline_print
+    .byte   13,".byte ",0
+    jmp     dump_loop
+
+dump_finish:
+    lda     #13
+    jsr     COUT
+    rts
+
+dump_count: .byte   0
+
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; Reset screen
@@ -1183,6 +1240,20 @@ temp0:  .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; setTilePointer
+;
+;-----------------------------------------------------------------------------
+
+.proc setTilePointer
+
+    lda     size
+    beq     :+
+    jmp     setTilePointer_14x16
+:
+    jmp     setTilePointer_7x8
+.endproc
+
+;-----------------------------------------------------------------------------
 ; updateTile
 ;  Update the tile pointed to by tileIndex with the current pixel data
 ;  To save time, only the 4 bytes pointed to by curX & Y are updated.
@@ -1445,6 +1516,9 @@ temp:       .byte   0
     sta     height
     lda     #15
     sta     height_m1
+    lda     #8*16
+    sta     length
+
     rts
 .endproc
 
@@ -1459,6 +1533,8 @@ temp:       .byte   0
     sta     height
     lda     #7
     sta     height_m1
+    lda     #4*8
+    sta     length
 
     rts
 .endproc
@@ -1481,12 +1557,12 @@ curY:           .byte   0
 paintColor:     .byte   $FF
 
 ; Make dimensions a variable incase we want variable tile size
-size:           .byte   1   ; 0=7x8, 1=14x16
-width:          .byte   14
-width_m1:       .byte   13
-height:         .byte   16
-height_m1:      .byte   15
-
+size:           .byte   0   ; 0=7x8, 1=14x16
+width:          .byte   0
+width_m1:       .byte   0
+height:         .byte   0
+height_m1:      .byte   0
+length:         .byte   0
 
 ; Conversion from pixels to bytes
 pixelOffset:    .byte   0
@@ -1587,7 +1663,12 @@ MAX_TILES = 64
 ; number of tiles should be /8
 .align 256
 tileSheet_7x8:
-    .res    32*MAX_TILES
+    ; upper-left
+    .byte   $00,$00,$00,$00,$00,$00,$00,$00                                           
+    .byte   $00,$55,$20,$2A,$00,$55,$2A,$2A                                           
+    .byte   $00,$55,$2A,$2A,$00,$55,$2A,$2A                                           
+    .byte   $00,$15,$2A,$00,$00,$15,$2A,$00                                           
+    .res    32*(MAX_TILES-1)
 
 ; number of tiles should be
 .align 256
