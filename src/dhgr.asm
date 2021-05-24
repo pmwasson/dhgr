@@ -37,6 +37,12 @@ screenPtr1      :=  $09
 color           :=  $E8
 
 MAX_TILES       = 64
+BOX_HORZ        = 16
+BOX_VERT        = 17
+BOX_UPPER_LEFT  = 18
+BOX_UPPER_RIGHT = 19
+BOX_LOWER_LEFT  = 20
+BOX_LOWER_RIGHT = 21
 
 
 .segment "CODE"
@@ -461,7 +467,11 @@ set_small:
     bne     :+
     bit     TXTSET
     jsr     inline_print
-    .byte   "Dump (ESC when done) ",13,0
+    .byte   "Dump Tile ",0
+    lda     tileIndex
+    jsr     PRBYTE
+    jsr     inline_print
+    .byte   " (ESC when done) ",13,0
     jsr     printDump
     jmp     command_loop
 :
@@ -529,16 +539,16 @@ finish_move:
 .proc printHelp
     bit     TXTSET
     jsr     inline_print
-    .byte   " Arrows: Move cursor",13
-    .byte   " Space:  Paint pixel",13
-    .byte   " 0-9A-F: Set paint color",13
-    .byte   " Ctrl-F: Fill entire tile with paint color",13
-    .byte   " Ctrl-T: Toggle between 7x8 and 14x16 tile size",13
-    .byte   " !:      Dump bytes",13
-    .byte   " -/=:    Go to previous/next tile",13
-    .byte   " ?:      This help screen",13
-    .byte   " Q:      Quit",13  
-    .byte   " Escape: Toggle text/graphics",13
+    .byte   "  Arrows:  Move cursor",13
+    .byte   "  Space:   Paint pixel",13
+    .byte   "  0-9,A-F: Set paint color",13
+    .byte   "  Ctrl-F:  Fill entire tile with paint color",13
+    .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
+    .byte   "  !:       Dump bytes",13
+    .byte   "  -/=:     Go to previous/next tile",13
+    .byte   "  ?:       This help screen",13
+    .byte   "  Q:       Quit",13  
+    .byte   "  Escape:  Toggle text/graphics",13
     .byte   0
 
     rts
@@ -550,13 +560,11 @@ finish_move:
 ;-----------------------------------------------------------------------------
 .proc printDump
 
+    lda     tileIndex
     jsr     setTilePointer
 
-    ldx     tilePtr0
-    ldy     tilePtr1
-    jsr     PRINTXY
     jsr     inline_print
-    .byte   ":",13,".byte ",0
+    .byte   ".byte ",0
 
     lda     #0
     sta     dump_count
@@ -591,9 +599,9 @@ dump_count: .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
-; Reset screen
+; Draw screen
 ;
-;   Clear screen and redraw
+;   Redraw screen
 ;-----------------------------------------------------------------------------
 
 .proc drawScreen
@@ -602,8 +610,101 @@ dump_count: .byte   0
     jsr     drawPreview
     jsr     drawTilePixels
 
+    ; Draw preview box
+    lda     #0
+    sta     boxLeft
+    sta     boxTop
+    lda     width
+    asl                 ; *2
+    adc     #2
+    sta     boxRight
+    lda     height
+    sta     boxBottom
+    inc     boxBottom
+    jsr     drawBox
+
     rts
 .endproc
+
+
+;-----------------------------------------------------------------------------
+; Draw box
+;
+;   Redraw screen
+;-----------------------------------------------------------------------------
+
+.proc drawBox
+
+    ; Draw corners
+    lda     boxLeft
+    sta     tileX
+    lda     boxTop
+    sta     tileY
+    lda     #BOX_UPPER_LEFT
+    jsr     drawTile_7x8
+
+    lda     boxRight
+    sta     tileX    
+    lda     #BOX_UPPER_RIGHT
+    jsr     drawTile_7x8
+
+    lda     boxBottom
+    sta     tileY
+    lda     #BOX_LOWER_RIGHT
+    jsr     drawTile_7x8
+
+    lda     boxLeft
+    sta     tileX
+    lda     #BOX_LOWER_LEFT
+    jsr     drawTile_7x8
+
+    ; Draw horizontal
+
+    inc     tileX
+    inc     tileX
+:
+    lda     boxTop
+    sta     tileY
+    lda     #BOX_HORZ
+    jsr     drawTile_7x8
+    
+    lda     boxBottom
+    sta     tileY
+    lda     #BOX_HORZ
+    jsr     drawTile_7x8
+    
+    inc     tileX
+    inc     tileX
+    lda     boxRight
+    cmp     tileX
+    bne     :-
+
+    ; Draw vertical
+
+    lda     boxTop
+    sta     tileY
+    inc     tileY
+
+:
+    lda     boxLeft
+    sta     tileX
+    lda     #BOX_VERT
+    jsr     drawTile_7x8
+    
+    lda     boxRight
+    sta     tileX
+    lda     #BOX_VERT
+    jsr     drawTile_7x8
+    
+    inc     tileY
+    lda     boxBottom
+    cmp     tileY
+    bne     :-
+
+    rts
+
+.endproc
+
 
 
 ;-----------------------------------------------------------------------------
@@ -735,10 +836,6 @@ loop:
 
     jsr     saveCursor
 
-    ; save tileIndex
-    lda     tileIndex
-    sta     temp
-
     ; set up coordinates
     lda     #0
     sta     curX
@@ -776,7 +873,6 @@ loop:
 :
 
     lda     curX
-    sta     tileIndex
     jsr     drawTile_7x8
 
     inc     curX
@@ -784,18 +880,13 @@ loop:
     cmp     #16
     bne     loop
 
-
     lda     #0
     sta     invMask
-
-    lda     temp
-    sta     tileIndex
 
     jsr     saveCursor      ; restore cursor
 
     rts
 
-temp:   .byte   0
 
 .endproc
 
@@ -809,7 +900,9 @@ temp:   .byte   0
 .proc drawPreview
     
 
-    lda     #40-8
+    lda     width
+    asl             ; *2
+    adc     #4
     sta     tileX
     lda     #1
     sta     tileY
@@ -817,10 +910,39 @@ temp:   .byte   0
     lda     size
     beq     :+
 
-    jsr drawTile_14x16   
+    ; large tiles
+
+    ; 1
+    lda     tileIndex
+    jsr     drawTile_14x16
+
+    ; 2x2
+    lda     #4
+    sta     tileY
+    lda     tileIndex
+    jsr     drawTile_14x16
+
+    lda     #6
+    sta     tileY
+    lda     tileIndex
+    jsr     drawTile_14x16
+
+    lda     tileX
+    clc
+    adc     #4
+    sta     tileX
+    lda     tileIndex
+    jsr     drawTile_14x16
+
+    lda     #4
+    sta     tileY
+    lda     tileIndex
+    jsr     drawTile_14x16
+
     rts
 :
-    jsr drawTile_7x8
+    lda     tileIndex
+    jsr     drawTile_7x8
     rts
 
 .endproc
@@ -919,7 +1041,7 @@ saveCurY:   .byte   0
     lda     linePage,x
     sta     screenPtr1
 
-    ldx     #8
+    ldx     #8              ; 8 line high
 
 pixel_loop:
     ldy     #0
@@ -1064,7 +1186,7 @@ done:
 ; drawTile
 ;  Assume 14x16, where 14 is 14*4 pixels = 56 -> 8 bytes
 ;    8*16 = 128, so 2 tiles per page
-;  tileIndex - tile to draw
+;  A         - tile to draw
 ;  tileX     - byte offset of tile, should be /4
 ;  tileY     - 8-line offset of tile, should be /2
 ;
@@ -1080,6 +1202,7 @@ done:
 
 .proc drawTile_14x16
 
+    ; tile index passed in A
     jsr     setTilePointer_14x16
 
     ; calculate screen pointer
@@ -1216,12 +1339,12 @@ temp0:  .byte   0
 .proc setTilePointer_14x16
 
     ; calculate tile pointer
-    lda     tileIndex
+    tay     ; save A
     lsr                     ; *128
     lda     #0
     ror
     sta     tilePtr0
-    lda     tileIndex
+    tya     ; restore A
     lsr                     ; /2
     clc
     adc     #>tileSheet_14x16
@@ -1234,7 +1357,7 @@ temp0:  .byte   0
 ; drawTile
 ;  Assume 7x8, where 7 is 7*4 pixels = 28 -> 4 bytes
 ;    4*8 = 32, so 8 tiles per page
-;  tileIndex - tile to draw
+;  A         - tile to draw
 ;  tileX     - byte offset of tile, should be /2
 ;  tileY     - 8-line offset of tile
 ;
@@ -1250,6 +1373,7 @@ temp0:  .byte   0
 ;-----------------------------------------------------------------------------
 .proc drawTile_7x8
 
+    ; tile index passes in A
     jsr     setTilePointer_7x8
 
     sta     CLR80COL        ; Use RAMWRT for aux mem
@@ -1314,17 +1438,18 @@ temp0:  .byte   0
 
 .endproc
 
+; Index passed in A
 .proc setTilePointer_7x8
 
+    tay     ; copy A
     ; calculate tile pointer
-    lda     tileIndex
     asl                     ; *32
     asl
     asl
     asl
     asl
     sta     tilePtr0
-    lda     tileIndex
+    tya     ; restore A
     lsr                     ; /8
     lsr
     lsr
@@ -1345,8 +1470,10 @@ temp0:  .byte   0
 
     lda     size
     beq     :+
+    lda     tileIndex
     jmp     setTilePointer_14x16
 :
+    lda     tileIndex
     jmp     setTilePointer_7x8
 .endproc
 
@@ -1367,6 +1494,7 @@ temp0:  .byte   0
 
 .proc updateTile_14x16
 
+    lda     tileIndex
     jsr     setTilePointer_14x16
 
     jsr     updateSetOffsets_14x16
@@ -1396,6 +1524,7 @@ temp0:  .byte   0
 
 .proc updateTile_7x8
 
+    lda     tileIndex
     jsr     setTilePointer_7x8
 
     jsr     updateSetOffsets_7x8
@@ -1549,6 +1678,7 @@ temp:       .byte   0
 .proc updatePixels_7x8
 
     jsr     saveCursor
+    lda     tileIndex
     jsr     setTilePointer_7x8
 
     lda     #0
@@ -1592,6 +1722,7 @@ tempIndex:  .byte   0
 .proc updatePixels_14x16
 
     jsr     saveCursor
+    lda     tileIndex
     jsr     setTilePointer_14x16
 
     lda     #0
@@ -1919,6 +2050,12 @@ pixelByte1:     .byte   0
 pixelByte2:     .byte   0
 pixelByte3:     .byte   0
 
+; Box routine
+boxLeft:        .byte   0
+boxRight:       .byte   0
+boxTop:         .byte   0
+boxBottom:      .byte   0
+
 ; Just store 1 pixel per byte and pad out to power of 2
 .align      256
 pixelData:
@@ -2001,7 +2138,6 @@ colorTable:
     .byte   $F * $11
 
 
-; number of tiles should be /8
 .align 256
 tileSheet_7x8:
 
@@ -2046,52 +2182,52 @@ tileSheet_7x8:
     .byte $00,$3C,$00,$00,$00,$3C,$00,$00,$00,$1F,$7C,$00,$00,$00,$00,$00           
 
     ; A
-    .byte $00,$0F,$78,$00,$40,$78,$0F,$01,$70,$40,$01,$07,$70,$40,$01,$07           
-    .byte $70,$7F,$7F,$07,$70,$40,$01,$07,$70,$40,$01,$07,$00,$00,$00,$00           
+    .byte $00,$0F,$78,$00,$40,$7E,$3F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07           
+    .byte $70,$7F,$7F,$07,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$00,$00,$00,$00           
 
     ; B
-    .byte $70,$7F,$7F,$01,$70,$40,$01,$07,$70,$40,$01,$07,$70,$7F,$7F,$01           
-    .byte $70,$40,$01,$07,$70,$40,$01,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+    .byte $70,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7F,$7F,$01           
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
 
     ; C
-    .byte $40,$7F,$7F,$01,$70,$40,$01,$07,$70,$00,$01,$00,$70,$00,$01,$00           
-    .byte $70,$00,$01,$00,$70,$40,$01,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
+    .byte $40,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$00,$1F,$00,$70,$00,$1F,$00           
+    .byte $70,$00,$1F,$00,$70,$7C,$1F,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
 
     ; D
-    .byte $70,$7F,$7F,$01,$70,$40,$01,$07,$70,$40,$01,$07,$70,$40,$01,$07           
-    .byte $70,$40,$01,$07,$70,$40,$01,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+    .byte $70,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7C,$1F,$07           
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
 
     ; E
-    .byte $70,$7F,$7F,$07,$70,$00,$01,$00,$70,$00,$01,$00,$70,$3F,$7F,$00           
-    .byte $70,$00,$01,$00,$70,$00,$01,$00,$70,$7F,$7F,$07,$00,$00,$00,$00           
+    .byte $70,$7F,$7F,$07,$70,$00,$1F,$00,$70,$00,$1F,$00,$70,$3F,$7F,$00           
+    .byte $70,$00,$1F,$00,$70,$00,$1F,$00,$70,$7F,$7F,$07,$00,$00,$00,$00           
 
     ; F
-    .byte $70,$7F,$7F,$07,$70,$00,$01,$00,$70,$00,$01,$00,$70,$3F,$7F,$00           
-    .byte $70,$00,$01,$00,$70,$00,$01,$00,$70,$00,$01,$00,$00,$00,$00,$00           
+    .byte $70,$7F,$7F,$07,$70,$00,$1F,$00,$70,$00,$1F,$00,$70,$3F,$7F,$00           
+    .byte $70,$00,$1F,$00,$70,$00,$1F,$00,$70,$00,$1F,$00,$00,$00,$00,$00           
 
     ; Horizontal pipe
-    .byte $00,$00,$00,$00,$55,$55,$2A,$2A,$55,$55,$2A,$2A,$5D,$77,$3B,$6E           
-    .byte $5D,$77,$3B,$6E,$55,$55,$2A,$2A,$55,$55,$2A,$2A,$00,$00,$00,$00           
+    .byte $00,$00,$00,$00,$2A,$2A,$55,$55,$6E,$3B,$5D,$77,$6E,$3B,$5D,$77           
+    .byte $6E,$3B,$5D,$77,$6E,$3B,$5D,$77,$2A,$2A,$55,$55,$00,$00,$00,$00           
 
     ; Vertical pipe
-    .byte $50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02           
-    .byte $50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02           
+    .byte $20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05           
+    .byte $20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05           
 
     ; Upper-left pipe
-    .byte $00,$00,$00,$00,$00,$55,$2A,$2A,$50,$55,$2A,$2A,$50,$77,$3A,$6E           
-    .byte $50,$77,$3A,$6E,$50,$57,$3A,$2A,$50,$57,$3A,$2A,$50,$57,$3A,$02              
+    .byte $00,$00,$00,$00,$00,$2A,$54,$55,$20,$3B,$55,$77,$20,$3B,$5D,$77           
+    .byte $20,$3B,$5D,$77,$20,$3B,$5D,$77,$20,$3B,$5D,$55,$20,$3B,$5D,$05           
 
     ; Upper-right pipe
-    .byte $00,$00,$00,$00,$55,$15,$2A,$00,$55,$55,$2A,$02,$5D,$57,$3B,$02           
-    .byte $5D,$57,$3B,$02,$55,$57,$3A,$02,$55,$57,$3A,$02,$50,$57,$3A,$02           
+    .byte $00,$00,$00,$00,$2A,$2A,$55,$00,$6E,$2B,$5D,$05,$6E,$3B,$5D,$05           
+    .byte $6E,$3B,$5D,$05,$6E,$3B,$5D,$05,$2A,$3B,$5D,$05,$20,$3B,$5D,$05           
 
     ; Lower-left pipe
-    .byte $50,$57,$3A,$02,$50,$57,$3A,$2A,$50,$57,$3A,$2A,$50,$77,$3A,$6E           
-    .byte $50,$77,$3A,$6E,$50,$55,$2A,$2A,$00,$55,$2A,$2A,$00,$00,$00,$00           
+    .byte $20,$3B,$5D,$05,$20,$3B,$5D,$55,$20,$3B,$5D,$77,$20,$3B,$5D,$77           
+    .byte $20,$3B,$5D,$77,$20,$3B,$55,$77,$00,$2A,$54,$55,$00,$00,$00,$00           
 
     ; Lower-right pipe
-    .byte $50,$57,$3A,$02,$55,$57,$3A,$02,$55,$57,$3A,$02,$5D,$57,$3B,$02           
-    .byte $5D,$57,$3B,$02,$55,$55,$2A,$02,$55,$15,$2A,$00,$00,$00,$00,$00           
+    .byte $20,$3B,$5D,$05,$2A,$3B,$5D,$05,$6E,$3B,$5D,$05,$6E,$3B,$5D,$05           
+    .byte $6E,$3B,$5D,$05,$6E,$2B,$5D,$05,$2A,$2A,$55,$00,$00,$00,$00,$00           
 
     .res    32*(MAX_TILES-22)
 
@@ -2101,12 +2237,15 @@ tileSheet_14x16:
 
     ; Grass
     .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
-    .byte $22,$08,$62,$08,$44,$11,$44,$11,$62,$08,$22,$08,$44,$11,$44,$11           
-    .byte $22,$08,$22,$08,$44,$11,$44,$13,$22,$08,$22,$08,$44,$11,$44,$11           
-    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$09,$26,$08,$64,$11,$44,$11           
+    .byte $22,$08,$26,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
     .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
-    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$1C,$44,$11,$44,$11           
-    .byte $22,$09,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$4C,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$09,$44,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
     .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
 
     .res    128*(MAX_TILES-1)
+
+end_of_program:
+    .byte 0
