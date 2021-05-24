@@ -64,7 +64,7 @@ BOX_LOWER_RIGHT = 21
     jsr     clearScreen
 
     ; default size
-    jsr     setSize_7x8
+    jsr     setSize_14x16
 
 
 reset_loop:
@@ -912,11 +912,11 @@ loop:
 
     ; large tiles
 
-    ; 1
+    ; 1 preview tile
     lda     tileIndex
     jsr     drawTile_14x16
 
-    ; 2x2
+    ; 2x2 tile grid
     lda     #4
     sta     tileY
     lda     tileIndex
@@ -941,9 +941,50 @@ loop:
 
     rts
 :
+
+    ; current preview tile
     lda     tileIndex
     jsr     drawTile_7x8
+
+    ; FIXME - display all tiles!
+
+    lda     #0
+    sta     index
+
+loopy:
+    lda     #24
+    sta     tileX
+
+loopx:
+    lda     index
+    cmp     tileIndex
+    bne     :+
+
+    lda     #$ff
+    sta     invMask
+    lda     tileIndex
+
+:
+    jsr     drawTile_7x8
+
+    lda     #0
+    sta     invMask
+
+    inc     index
+    inc     tileX
+    inc     tileX
+    lda     tileX
+    cmp     #40
+    bne     loopx
+
+    inc     tileY
+    lda     index
+    cmp     #MAX_TILES
+    bne     loopy
+
     rts
+
+index:  .byte   0
 
 .endproc
 
@@ -2245,7 +2286,28 @@ tileSheet_14x16:
     .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
     .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
 
-    .res    128*(MAX_TILES-1)
+    ; Bricks
+    .byte $2A,$2A,$2A,$2A,$55,$55,$55,$55,$4C,$33,$4C,$33,$15,$66,$15,$66           
+    .byte $4C,$33,$4C,$33,$15,$66,$15,$66,$4C,$33,$4C,$33,$15,$66,$15,$66           
+    .byte $2A,$2A,$2A,$2A,$55,$55,$55,$55,$4A,$33,$4A,$33,$19,$66,$19,$66           
+    .byte $4A,$33,$4A,$33,$19,$66,$19,$66,$4A,$33,$4A,$33,$19,$66,$19,$66           
+    .byte $2A,$2A,$2A,$2A,$55,$55,$55,$55,$4C,$32,$4C,$32,$59,$66,$59,$66           
+    .byte $4C,$32,$4C,$32,$59,$66,$59,$66,$4C,$32,$4C,$32,$59,$66,$59,$66           
+    .byte $2A,$2A,$2A,$2A,$55,$55,$55,$55,$4C,$33,$4C,$33,$19,$56,$19,$56           
+    .byte $4C,$33,$4C,$33,$19,$56,$19,$56,$4C,$33,$4C,$33,$19,$56,$19,$56           
+
+
+    ; Tree
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$19,$66,$09,$44,$33,$4C,$11           
+    .byte $22,$1D,$66,$19,$4C,$33,$4E,$11,$62,$59,$77,$19,$4C,$3B,$4C,$13           
+    .byte $62,$19,$66,$1D,$4E,$33,$4C,$13,$62,$1D,$66,$19,$6C,$3B,$6E,$13           
+    .byte $62,$19,$77,$19,$4C,$33,$4C,$13,$62,$19,$66,$1D,$6E,$33,$4C,$13           
+    .byte $62,$19,$66,$19,$4C,$3B,$6C,$13,$22,$1D,$77,$19,$4C,$33,$4E,$11           
+    .byte $22,$19,$66,$09,$44,$33,$4C,$11,$22,$08,$66,$08,$44,$31,$44,$11           
+    .byte $22,$08,$44,$08,$44,$21,$44,$11,$22,$08,$44,$08,$44,$21,$44,$11           
+    .byte $22,$08,$44,$08,$44,$21,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
+
+    .res    128*(MAX_TILES-3)
 
 end_of_program:
     .byte 0
