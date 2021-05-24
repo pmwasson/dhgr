@@ -1,7 +1,7 @@
 ;-----------------------------------------------------------------------------
 ; Paul Wasson - 2021
 ;-----------------------------------------------------------------------------
-; DHGR BW Demo
+; DHGR Tile Editor
 ;
 
 ;------------------------------------------------
@@ -36,6 +36,9 @@ screenPtr1      :=  $09
 
 color           :=  $E8
 
+MAX_TILES       = 64
+
+
 .segment "CODE"
 .org    $4000
 
@@ -49,18 +52,18 @@ color           :=  $E8
 
     ; display a greeting
     jsr     inline_print
-    .byte   "DHGR tile edit - ? for help",13,0
+    .byte   "DHGR tile editor - ? for help",13,0
 
     jsr     dhgrInit
+    jsr     clearScreen
 
     ; default size
     jsr     setSize_7x8
 
-    ; Populate pixels
-    jsr     updatePixels
 
 reset_loop:
-    jsr     resetScreen
+    jsr     updatePixels    ; populate pixels
+    jsr     drawScreen
 
 command_loop:
     jsr     inline_print
@@ -152,6 +155,48 @@ down_good:
 :
 
     ;------------------
+    ; - = Previous
+    ;------------------
+    cmp     #$80 | '-'
+    bne     :+
+    jsr     inline_print
+    .byte   "Previous tile: ",0
+
+    lda     tileIndex
+    bne     previous_continue
+    lda     #MAX_TILES
+    sta     tileIndex
+previous_continue:
+    dec     tileIndex
+    lda     tileIndex
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    jmp     reset_loop
+:
+
+    ;------------------
+    ; = = Next
+    ;------------------
+    cmp     #$80 | '='
+    bne     :+
+    jsr     inline_print
+    .byte   "Next tile: ",0
+
+    inc     tileIndex
+    lda     tileIndex
+    cmp     #MAX_TILES
+    bne     next_continue
+    lda     #0
+    sta     tileIndex
+next_continue:
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    jmp     reset_loop
+:
+
+    ;------------------
     ; SP = Set Pixel
     ;------------------
     cmp     #KEY_SPACE
@@ -203,13 +248,13 @@ down_good:
     jsr     inline_print
     .byte   "14x16",13,0
     jsr     setSize_14x16
-    jsr     updatePixels_14x16
+    jsr     clearScreen
     jmp     reset_loop
 set_small:
     jsr     inline_print
     .byte   "7x8",13,0
     jsr     setSize_7x8
-    jsr     updatePixels_7x8
+    jsr     clearScreen
     jmp     reset_loop
 :
 
@@ -410,7 +455,7 @@ set_small:
 
 
     ;------------------
-    ; D = Dump
+    ; ! = Dump
     ;------------------
     cmp     #$80 + '!' 
     bne     :+
@@ -454,7 +499,7 @@ set_small:
 ; jump to after changing color
 finish_color:
     sta     paintColor
-    jsr     drawPreview
+    jsr     drawColorKey
     jmp     command_loop
 
 ; jump to after changing coordinates
@@ -484,10 +529,18 @@ finish_move:
 .proc printHelp
     bit     TXTSET
     jsr     inline_print
-    .byte   " ?:   HELP",13
-    .byte   " Q:   Quit",13  
+    .byte   " Arrows: Move cursor",13
+    .byte   " Space:  Paint pixel",13
+    .byte   " 0-9A-F: Set paint color",13
+    .byte   " Ctrl-F: Fill entire tile with paint color",13
+    .byte   " Ctrl-T: Toggle between 7x8 and 14x16 tile size",13
+    .byte   " !:      Dump bytes",13
+    .byte   " -/=:    Go to previous/next tile",13
+    .byte   " ?:      This help screen",13
+    .byte   " Q:      Quit",13  
     .byte   " Escape: Toggle text/graphics",13
     .byte   0
+
     rts
 .endproc
 
@@ -543,18 +596,10 @@ dump_count: .byte   0
 ;   Clear screen and redraw
 ;-----------------------------------------------------------------------------
 
-.proc resetScreen
-
-    ; clear screens
-    lda     #$20    ; page1
-    sta     screenPage
-    lda     #$55    ; black
-    sta     color
-    jsr     clearScreen
+.proc drawScreen
 
     jsr     drawColorKey
     jsr     drawPreview
-
     jsr     drawTilePixels
 
     rts
@@ -563,62 +608,41 @@ dump_count: .byte   0
 
 ;-----------------------------------------------------------------------------
 ; DHGR clear screen
-;
-;   screenPage - set to either 2000 or 4000
-;   color - set colors in upper and lower nibble
 ;-----------------------------------------------------------------------------
 
 .proc clearScreen
     lda     #$00
     sta     screenPtr0
-    lda     screenPage
+    lda     #$20
     sta     screenPtr1
 
-    clc
-    adc     #$20
-    sta     screenEnd
+    sta     CLR80COL        ; Use RAMWRT for aux mem
 
 loop:
     ldy     #0
-yloop:
 
-    lda     color
+    ; aux mem
+    lda     #0
     sta     RAMWRTON  
-    sta     (screenPtr0),y
-    sta     RAMWRTOFF
-    rol     ; put bit 7 into carry
-    rol     color
 
-    lda     color
+:
     sta     (screenPtr0),y
-    rol     ; put bit 7 into carry
-    rol     color
-
     iny
+    bne     :-    
 
-    lda     color
-    sta     RAMWRTON  
-    sta     (screenPtr0),y
     sta     RAMWRTOFF
-    rol     ; put bit 7 into carry
-    rol     color
 
-    lda     color
+    ; main mem
+:
     sta     (screenPtr0),y
-    rol     ; put bit 7 into carry
-    rol     color
-
     iny
-
-    bne     yloop
+    bne     :-    
 
     inc     screenPtr1
-    lda     screenEnd
+    lda     #$40
     cmp     screenPtr1
     bne     loop
     rts
-
-screenEnd:      .byte   $40
 
 .endproc
 
@@ -709,29 +733,74 @@ screenEnd:      .byte   $40
 
 .proc drawColorKey
 
+    jsr     saveCursor
+
+    ; save tileIndex
+    lda     tileIndex
+    sta     temp
+
     ; set up coordinates
     lda     #0
     sta     curX
     lda     #17
     sta     curY
 
+    lda     #19
+    sta     tileY
+
     ; loop through colors
-:
+loop:
+
+    ; Draw color pixel
     ldx     curX
     lda     colorTable,x
     sta     color
     jsr     drawPixel
+
+    ; Calc label X
+    lda     curX
+    clc
+    adc     #1      ; + offset
+    asl             ; *2
+    sta     tileX
+
+    ; Set mask
+    lda     #$00
+    sta     invMask
+    lda     paintColor
+    and     #$0f
+    cmp     curX
+    bne     :+
+    lda     #$ff
+    sta     invMask
+:
+
+    lda     curX
+    sta     tileIndex
+    jsr     drawTile_7x8
+
     inc     curX
     lda     curX
     cmp     #16
-    bne     :-
+    bne     loop
+
 
     lda     #0
-    sta     curX
-    sta     curY
+    sta     invMask
+
+    lda     temp
+    sta     tileIndex
+
+    jsr     saveCursor      ; restore cursor
 
     rts
+
+temp:   .byte   0
+
 .endproc
+
+
+
 
 ;-----------------------------------------------------------------------------
 ; Draw preview
@@ -739,30 +808,21 @@ screenEnd:      .byte   $40
 
 .proc drawPreview
     
-    ; current paint color
-    jsr     saveCursor  ; save cursor position
-    lda     #15
-    sta     curX
-    lda     #0
-    sta     curY
-    lda     paintColor
-    sta     color
-    jsr     drawPixel
-    jsr     saveCursor  ; restore cursor position
 
-    ; large tile
     lda     #40-8
     sta     tileX
-    lda     #4
+    lda     #1
     sta     tileY
+
+    lda     size
+    beq     :+
+
     jsr drawTile_14x16   
-
-    ; small tile
-    lda     #8
-    sta     tileY
-    jsr drawTile_7x8   
-
     rts
+:
+    jsr drawTile_7x8
+    rts
+
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -918,14 +978,7 @@ cursor_loop:
     lda     #$FF
     jsr     COUT
 
-    jsr     getPixelColor
-    lda     color
-    lda     #$ff        ; default cursor == white
-    cmp     color       ; if pixel white ...
-    bne     :+
-    lda     #0          ; ... set color to black
-:
-    sta     color
+    jsr     setCursorColor
     jsr     drawPixel
 
     ; Wait (on)
@@ -978,6 +1031,34 @@ waitExit:
 
 .endproc
 
+;-----------------------------------------------------------------------------
+; Set cursor color
+;   Default to paint color
+;   If pixel == painter color and pixel != white, use white
+;   Else use black
+;-----------------------------------------------------------------------------
+
+.proc setCursorColor
+
+    jsr     getPixelColor
+    lda     paintColor
+    cmp     color
+    bne     done        ; A = paintColor
+
+    ; check if current is white
+    lda     #$ff
+    cmp     paintColor
+    bne     done        ; A = white
+
+    ; set to black
+    lda     #0
+
+done:
+    sta     color
+    rts
+
+.endproc
+
 
 ;-----------------------------------------------------------------------------
 ; drawTile
@@ -988,14 +1069,15 @@ waitExit:
 ;  tileY     - 8-line offset of tile, should be /2
 ;
 ;            0 1 2 3 4 5 6 7 8 9 10 11 12 13 ; 4-bit pixels in 7-bit byes (MSB ignored)
-;            ---   -----   ---   --------
-;              -----   ---   ------    -----
+;            -0-   --2--   -4-   ----6---    ; AUX memory
+;              --1--   -3-   ---5--    --7-- ; Main memory
+;
 ;  Storage:  000 004 001 005 002 006 003 007 ; line 0
 ;            008 012 009 013 010 014 011 015 ; line 1
 ;            ..
 ;            120 124 121 125 122 126 123 127 ; line 15
-
 ;-----------------------------------------------------------------------------
+
 .proc drawTile_14x16
 
     jsr     setTilePointer_14x16
@@ -1157,8 +1239,9 @@ temp0:  .byte   0
 ;  tileY     - 8-line offset of tile
 ;
 ;            0 1 2  3 4 5 6  ; 4-bit pixels in 7-bit byes (MSB ignored)
-;            ---    -----
-;              ------   ---
+;            -0-    --2--    ; AUX memory
+;              ---1--   -3-  ; Main memory
+;
 ;  Storage:  00  02  01  03  ; line 0
 ;            04  06  05  07  ; line 1
 ;            ..
@@ -1188,9 +1271,11 @@ drawLoop1:
     sta     RAMWRTON   
     ldy     #0
     lda     (tilePtr0),y
+    eor     invMask
     sta     (screenPtr0),y
     ldy     #1
     lda     (tilePtr0),y
+    eor     invMask
     sta     (screenPtr0),y
 
     ; Bytes 2-3 in MAIN memory
@@ -1203,9 +1288,11 @@ drawLoop1:
 
     ldy     #0
     lda     (tilePtr0),y
+    eor     invMask
     sta     (screenPtr0),y
     ldy     #1
     lda     (tilePtr0),y
+    eor     invMask
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing
@@ -1558,6 +1645,8 @@ yloop:
     iny     ; +8 -> next row
     sty     tempIndex
 
+    jsr     bytesToPixels
+
     inc     curY
     lda     curY
     cmp     #16
@@ -1767,6 +1856,10 @@ temp:       .byte   0
     lda     #8*16
     sta     length
 
+    lda     #0
+    sta     curX
+    sta     curY
+
     rts
 .endproc
 
@@ -1783,6 +1876,10 @@ temp:       .byte   0
     sta     height_m1
     lda     #4*8
     sta     length
+
+    lda     #0
+    sta     curX
+    sta     curY
 
     rts
 .endproc
@@ -1802,6 +1899,7 @@ tileIndex:      .byte   0
 curX:           .byte   0
 curY:           .byte   0
 
+invMask:        .byte   0
 paintColor:     .byte   $FF
 
 ; Make dimensions a variable incase we want variable tile size
@@ -1903,26 +2001,112 @@ colorTable:
     .byte   $F * $11
 
 
-; Tile Storage
-;---------------------
-
-MAX_TILES = 64
-
 ; number of tiles should be /8
 .align 256
 tileSheet_7x8:
-    ; upper-left
-    .byte   $0f,$00,$00,$00,$00,$00,$00,$00                                           
-    .byte   $00,$55,$20,$2A,$00,$55,$2A,$2A                                           
-    .byte   $00,$55,$2A,$2A,$00,$55,$2A,$2A                                           
-    .byte   $00,$15,$2A,$00,$00,$15,$2A,$00                                           
-    .res    32*(MAX_TILES-1)
 
-; number of tiles should be
+    ; 0                                                                           
+    .byte $00,$1F,$7C,$00,$00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$3C,$1E,$00           
+    .byte $00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$1F,$7C,$00,$00,$00,$00,$00           
+
+    ; 1
+    .byte $00,$03,$60,$00,$00,$03,$7C,$00,$00,$03,$60,$00,$00,$03,$60,$00           
+    .byte $00,$03,$60,$00,$00,$03,$60,$00,$00,$3F,$7E,$00,$00,$00,$00,$00           
+
+    ; 2
+    .byte $00,$1F,$7E,$00,$00,$3C,$00,$00,$00,$3C,$00,$00,$00,$1F,$7C,$00           
+    .byte $00,$00,$1E,$00,$00,$00,$1E,$00,$00,$3F,$7E,$00,$00,$00,$00,$00           
+
+    ; 3
+    .byte $00,$1F,$7E,$00,$00,$3C,$00,$00,$00,$3C,$00,$00,$00,$1F,$60,$00           
+    .byte $00,$3C,$00,$00,$00,$3C,$00,$00,$00,$1F,$7E,$00,$00,$00,$00,$00           
+
+    ; 4
+    .byte $00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$3F,$7E,$00           
+    .byte $00,$3C,$00,$00,$00,$3C,$00,$00,$00,$3C,$00,$00,$00,$00,$00,$00           
+
+    ; 5
+    .byte $00,$3F,$7E,$00,$00,$00,$1E,$00,$00,$00,$1E,$00,$00,$1F,$7C,$00           
+    .byte $00,$3C,$00,$00,$00,$3C,$00,$00,$00,$1F,$7E,$00,$00,$00,$00,$00           
+
+    ; 6
+    .byte $00,$1F,$7C,$00,$00,$00,$1E,$00,$00,$00,$1E,$00,$00,$1F,$7E,$00           
+    .byte $00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$1F,$7C,$00,$00,$00,$00,$00           
+
+    ; 7
+    .byte $00,$3F,$7E,$00,$00,$3C,$00,$00,$00,$3C,$00,$00,$00,$0F,$00,$00           
+    .byte $00,$03,$60,$00,$00,$03,$60,$00,$00,$03,$60,$00,$00,$00,$00,$00           
+
+    ; 8
+    .byte $00,$1F,$7C,$00,$00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$1F,$7C,$00           
+    .byte $00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$1F,$7C,$00,$00,$00,$00,$00           
+
+    ; 9 
+    .byte $00,$1F,$7C,$00,$00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$3F,$7C,$00           
+    .byte $00,$3C,$00,$00,$00,$3C,$00,$00,$00,$1F,$7C,$00,$00,$00,$00,$00           
+
+    ; A
+    .byte $00,$0F,$78,$00,$40,$78,$0F,$01,$70,$40,$01,$07,$70,$40,$01,$07           
+    .byte $70,$7F,$7F,$07,$70,$40,$01,$07,$70,$40,$01,$07,$00,$00,$00,$00           
+
+    ; B
+    .byte $70,$7F,$7F,$01,$70,$40,$01,$07,$70,$40,$01,$07,$70,$7F,$7F,$01           
+    .byte $70,$40,$01,$07,$70,$40,$01,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; C
+    .byte $40,$7F,$7F,$01,$70,$40,$01,$07,$70,$00,$01,$00,$70,$00,$01,$00           
+    .byte $70,$00,$01,$00,$70,$40,$01,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; D
+    .byte $70,$7F,$7F,$01,$70,$40,$01,$07,$70,$40,$01,$07,$70,$40,$01,$07           
+    .byte $70,$40,$01,$07,$70,$40,$01,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; E
+    .byte $70,$7F,$7F,$07,$70,$00,$01,$00,$70,$00,$01,$00,$70,$3F,$7F,$00           
+    .byte $70,$00,$01,$00,$70,$00,$01,$00,$70,$7F,$7F,$07,$00,$00,$00,$00           
+
+    ; F
+    .byte $70,$7F,$7F,$07,$70,$00,$01,$00,$70,$00,$01,$00,$70,$3F,$7F,$00           
+    .byte $70,$00,$01,$00,$70,$00,$01,$00,$70,$00,$01,$00,$00,$00,$00,$00           
+
+    ; Horizontal pipe
+    .byte $00,$00,$00,$00,$55,$55,$2A,$2A,$55,$55,$2A,$2A,$5D,$77,$3B,$6E           
+    .byte $5D,$77,$3B,$6E,$55,$55,$2A,$2A,$55,$55,$2A,$2A,$00,$00,$00,$00           
+
+    ; Vertical pipe
+    .byte $50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02           
+    .byte $50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02,$50,$57,$3A,$02           
+
+    ; Upper-left pipe
+    .byte $00,$00,$00,$00,$00,$55,$2A,$2A,$50,$55,$2A,$2A,$50,$77,$3A,$6E           
+    .byte $50,$77,$3A,$6E,$50,$57,$3A,$2A,$50,$57,$3A,$2A,$50,$57,$3A,$02              
+
+    ; Upper-right pipe
+    .byte $00,$00,$00,$00,$55,$15,$2A,$00,$55,$55,$2A,$02,$5D,$57,$3B,$02           
+    .byte $5D,$57,$3B,$02,$55,$57,$3A,$02,$55,$57,$3A,$02,$50,$57,$3A,$02           
+
+    ; Lower-left pipe
+    .byte $50,$57,$3A,$02,$50,$57,$3A,$2A,$50,$57,$3A,$2A,$50,$77,$3A,$6E           
+    .byte $50,$77,$3A,$6E,$50,$55,$2A,$2A,$00,$55,$2A,$2A,$00,$00,$00,$00           
+
+    ; Lower-right pipe
+    .byte $50,$57,$3A,$02,$55,$57,$3A,$02,$55,$57,$3A,$02,$5D,$57,$3B,$02           
+    .byte $5D,$57,$3B,$02,$55,$55,$2A,$02,$55,$15,$2A,$00,$00,$00,$00,$00           
+
+    .res    32*(MAX_TILES-22)
+
 .align 256
+
 tileSheet_14x16:
-    .res    128*MAX_TILES
 
-.align 256
-mapSheet:
-    .res    32*32
+    ; Grass
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
+    .byte $22,$08,$62,$08,$44,$11,$44,$11,$62,$08,$22,$08,$44,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$13,$22,$08,$22,$08,$44,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$09,$26,$08,$64,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$1C,$44,$11,$44,$11           
+    .byte $22,$09,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
+    .byte $22,$08,$22,$08,$44,$11,$44,$11,$22,$08,$22,$08,$44,$11,$44,$11           
+
+    .res    128*(MAX_TILES-1)
