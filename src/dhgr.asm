@@ -321,17 +321,78 @@ set_small:
     bne     set_color_mode
 ; set B&W mode
     jsr     inline_print
-    .byte   "Sub-Pixel",13,0
+    .byte   "Binary",13,0
     lda     #$20
     sta     colorMode
     jmp     reset_loop
 set_color_mode:
     jsr     inline_print
-    .byte   "Block",13,0
+    .byte   "Color",13,0
     lda     #$10
     sta     colorMode
     jmp     reset_loop
 :
+
+
+    ;------------------
+    ; R = Rotate
+    ;------------------
+    cmp     #KEY_CTRL_R
+    bne     rotate_after
+    jsr     inline_print
+    .byte   "Rotate Direction (or cancel):",0
+    jsr     getInputDirection
+    bmi     rotate_cancel
+
+    cmp     #DIR_UP
+    bne     :+
+    jsr     rotateUp
+    jmp     rotate_done
+:
+
+    cmp     #DIR_DOWN
+    bne     :+
+    jsr     rotateDown
+    jmp     rotate_done
+:
+    cmp     #DIR_LEFT
+    bne     :+
+    jsr     rotateLeft
+    jmp     rotate_done
+:
+    ; must be right
+    jsr     rotateRight
+
+rotate_done:
+    jsr     updateAll
+    jsr     reset_loop
+
+rotate_cancel:
+    jmp     command_loop
+
+rotate_after:  
+
+    ;------------------
+    ; M = Mirror
+    ;------------------
+    cmp     #KEY_CTRL_M
+    bne     mirror_after
+    jsr     inline_print
+    .byte   "Mirror Direction (or cancel):",0
+    jsr     getInputDirection
+    bmi     rotate_cancel   ; share code
+
+    cmp     #DIR_UP         ; warning depends on order of enum
+    bpl     :+
+    ;jsr     mirrorHorz
+    jmp     rotate_done     ; share code
+:
+
+    ; must be vertical
+    ;jsr     mirrorVert
+    jmp     rotate_done     ; share code
+
+mirror_after:  
 
 ; DHGR Colors
 ;---------------------
@@ -603,6 +664,46 @@ finish_move:
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Get input direction
+;   Pick and diplay 1 of 4 directions or cancel
+;-----------------------------------------------------------------------------
+.proc getInputDirection
+    jsr     getInput
+    cmp     #KEY_LEFT
+    bne     :+
+    jsr     inline_print
+    .byte   "Left ",13,0
+    lda     #DIR_LEFT
+    rts
+:
+    cmp     #KEY_RIGHT
+    bne     :+
+    jsr     inline_print
+    .byte   "Right",13,0
+    lda     #DIR_RIGHT
+    rts
+:
+    cmp     #KEY_UP
+    bne     :+
+    jsr     inline_print
+    .byte   "Up   ",13,0
+    lda     #DIR_UP
+    rts
+:
+    cmp     #KEY_DOWN
+    bne     :+
+    jsr     inline_print
+    .byte   "Down ",13,0
+    lda     #DIR_DOWN
+    rts
+:
+    jsr     inline_print
+    .byte   "Cancel",13,0
+    LDA     #$FF
+    rts
+.endproc
+
+;-----------------------------------------------------------------------------
 ; printHelp
 ;-----------------------------------------------------------------------------
 .proc printHelp
@@ -612,8 +713,10 @@ finish_move:
     .byte   "  0-9,A-F: Set paint color",13
     .byte   "  Space:   Paint pixel",13
     .byte   "  Ctrl-F:  Fill entire tile with paint color",13
+    .byte   "  Ctrl-M:  Mirror pixels in a direction specified by an arrow key",13
+    .byte   "  Ctrl-R:  Rotate pixels in a direction specified by an arrow key",13
     .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
-    .byte   "  Ctrl-B:  Toggle between block and pixel mode",13
+    .byte   "  Ctrl-B:  Toggle between color and binary mode",13
     .byte   "  !:       Dump bytes",13
     .byte   "  -,=:     Go to previous/next tile",13
     .byte   "  _,+:     Go to previous/next 8 tiles",13
@@ -670,6 +773,215 @@ dump_finish:
 dump_count: .byte   0
 
 .endproc
+
+
+;-----------------------------------------------------------------------------
+; Rotate up 
+;  Rotate all pixels based on tile size
+;-----------------------------------------------------------------------------
+.proc rotateUp
+
+    ldx     #0      ; destination row
+    ldy     #16     ; source row
+
+loop:
+    lda     height_m1
+    sta     loopCount
+
+    ; remember first data
+    lda     pixelData,x
+    sta     temp
+
+col_loop:
+    lda     pixelData,y
+    sta     pixelData,x
+
+    tya
+    tax     ; copy Y -> X
+    clc
+    adc     #16
+    tay     ; y += 16 (next row)
+    dec     loopCount
+    bne     col_loop
+
+    ; write back first data
+    lda     temp
+    sta     pixelData,x
+
+    ; calc next column
+    iny     ; +1 (next column)
+    tya
+    sec     ; jump back to start of column
+    sbc     height_x16
+    tax     ; put into X
+    clc
+    adc     #16
+    tay     ; y = next row
+
+    cpx     width
+    bne     loop
+
+    rts
+
+temp:       .byte   0
+loopCount:  .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Rotate down
+;  Rotate all pixels based on tile size
+;-----------------------------------------------------------------------------
+.proc rotateDown
+
+    lda     height_x16
+    sec
+    sbc     #16
+    tax             ; destination row
+    sec
+    sbc     #16
+    tay             ; source row
+
+    lda     width
+    sta     loopCountRow
+
+
+loop:
+    lda     height_m1
+    sta     loopCountCol
+
+    ; remember first data
+    lda     pixelData,x
+    sta     temp
+
+col_loop:
+    lda     pixelData,y
+    sta     pixelData,x
+
+    tya
+    tax     ; copy Y -> X
+    sec
+    sbc     #16
+    tay     ; y -= 16 (next row)
+    dec     loopCountCol
+    bne     col_loop
+
+    ; write back first data
+    lda     temp
+    sta     pixelData,x
+
+    ; calc next column
+    iny     ; +1 (next column)
+    tya
+    clc     ; jump back to start of column
+    adc     height_x16
+    tax     ; put into X
+    sec
+    sbc     #16
+    tay     ; y = next row
+
+    dec     loopCountRow
+    bne     loop
+
+    rts
+
+temp:           .byte   0
+loopCountCol:   .byte   0
+loopCountRow:   .byte   0
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; Rotate Left
+;  Rotate all pixels based on tile size
+;-----------------------------------------------------------------------------
+.proc rotateLeft
+
+    lda     height
+    sta     loopCount
+    ldx     #0
+
+loop:
+    ; remember first data
+    lda     pixelData,x
+    sta     temp
+
+    ldy     width_m1
+
+row_loop:
+    inx
+    lda     pixelData,x
+    dex
+    sta     pixelData,x
+    inx
+    dey
+    bne     row_loop
+
+    lda     temp
+    sta     pixelData,x
+
+    txa
+    clc
+    adc     #16
+    and     #$F0
+    tax
+
+    dec     loopCount
+    bne     loop
+
+    rts
+
+temp:       .byte   0
+loopCount:  .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Rotate Right
+;  Rotate all pixels based on tile size
+;-----------------------------------------------------------------------------
+.proc rotateRight
+
+    lda     height
+    sta     loopCount
+    ldx     width_m1
+
+loop:
+    ; remember first data
+    lda     pixelData,x
+    sta     temp
+
+    ldy     width_m1
+
+row_loop:
+    dex
+    lda     pixelData,x
+    inx
+    sta     pixelData,x
+    dex
+    dey
+    bne     row_loop
+
+    lda     temp
+    sta     pixelData,x
+
+    txa
+    clc
+    adc     #16
+    adc     width_m1
+    tax
+
+    dec     loopCount
+    bne     loop
+
+    rts
+
+temp:       .byte   0
+loopCount:  .byte   0
+
+.endproc
+
 
 ;-----------------------------------------------------------------------------
 ; Draw screen
@@ -2100,6 +2412,8 @@ temp:       .byte   0
     sta     height
     lda     #15
     sta     height_m1
+    lda     #0          ; height * 16
+    sta     height_x16
     lda     #8*16
     sta     length
 
@@ -2121,6 +2435,8 @@ temp:       .byte   0
     sta     height
     lda     #7
     sta     height_m1
+    lda     #8*16
+    sta     height_x16
     lda     #4*8
     sta     length
 
@@ -2156,6 +2472,7 @@ width:          .byte   0
 width_m1:       .byte   0
 height:         .byte   0
 height_m1:      .byte   0
+height_x16:     .byte   0
 length:         .byte   0
 
 ; Conversion from pixels to bytes
