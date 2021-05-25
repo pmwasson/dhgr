@@ -182,6 +182,28 @@ previous_continue:
 :
 
     ;------------------
+    ; _ = Previous 8
+    ;------------------
+    cmp     #$80 | '_'
+    bne     :+
+    jsr     inline_print
+    .byte   "Previous 8 tiles: ",0
+
+    lda     tileIndex
+    sec     
+    sbc     #8
+    bpl     previous8_continue
+    clc
+    adc     #MAX_TILES
+previous8_continue:
+    sta     tileIndex
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    jmp     reset_loop
+:
+
+    ;------------------
     ; = = Next
     ;------------------
     cmp     #$80 | '='
@@ -196,6 +218,29 @@ previous_continue:
     lda     #0
     sta     tileIndex
 next_continue:
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    jmp     reset_loop
+:
+
+    ;------------------
+    ; + = Next 8
+    ;------------------
+    cmp     #$80 | '+'
+    bne     :+
+    jsr     inline_print
+    .byte   "Next 8 tiles: ",0
+
+    lda     tileIndex
+    clc
+    adc     #8
+    cmp     #MAX_TILES
+    bmi     next_continue8
+    sec
+    sbc     #MAX_TILES
+next_continue8:
+    sta     tileIndex
     jsr     PRBYTE
     lda     #13
     jsr     COUT
@@ -261,6 +306,30 @@ set_small:
     .byte   "7x8",13,0
     jsr     setSize_7x8
     jsr     clearScreen
+    jmp     reset_loop
+:
+
+    ;------------------
+    ; ^B = Toggle B&W
+    ;------------------
+    cmp     #KEY_CTRL_B
+    bne     :+
+    jsr     inline_print
+    .byte   "Toggle mode.  New mode: ",0
+    lda     colorMode
+    cmp     #$10
+    bne     set_color_mode
+; set B&W mode
+    jsr     inline_print
+    .byte   "Sub-Pixel",13,0
+    lda     #$20
+    sta     colorMode
+    jmp     reset_loop
+set_color_mode:
+    jsr     inline_print
+    .byte   "Block",13,0
+    lda     #$10
+    sta     colorMode
     jmp     reset_loop
 :
 
@@ -540,15 +609,19 @@ finish_move:
     bit     TXTSET
     jsr     inline_print
     .byte   "  Arrows:  Move cursor",13
-    .byte   "  Space:   Paint pixel",13
     .byte   "  0-9,A-F: Set paint color",13
+    .byte   "  Space:   Paint pixel",13
     .byte   "  Ctrl-F:  Fill entire tile with paint color",13
     .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
+    .byte   "  Ctrl-B:  Toggle between block and pixel mode",13
     .byte   "  !:       Dump bytes",13
-    .byte   "  -/=:     Go to previous/next tile",13
+    .byte   "  -,=:     Go to previous/next tile",13
+    .byte   "  _,+:     Go to previous/next 8 tiles",13
     .byte   "  ?:       This help screen",13
     .byte   "  Q:       Quit",13  
     .byte   "  Escape:  Toggle text/graphics",13
+    ;.byte   "There are 2 tiles sheets in memory, one for 14x16 tiles and one for 7x8 tiles.",13
+    ;.byte   "Each sheet contains 64 tiles that can be editted.",13
     .byte   0
 
     rts
@@ -842,9 +915,6 @@ loop:
     lda     #17
     sta     curY
 
-    lda     #19
-    sta     tileY
-
     ; loop through colors
 loop:
 
@@ -853,6 +923,9 @@ loop:
     lda     colorTable,x
     sta     color
     jsr     drawPixel
+
+    lda     #19
+    sta     tileY
 
     ; Calc label X
     lda     curX
@@ -875,13 +948,13 @@ loop:
     lda     curX
     jsr     drawTile_7x8
 
+    lda     #$00
+    sta     invMask
+
     inc     curX
     lda     curX
     cmp     #16
     bne     loop
-
-    lda     #0
-    sta     invMask
 
     jsr     saveCursor      ; restore cursor
 
@@ -1063,65 +1136,26 @@ saveCurY:   .byte   0
 
 ;-----------------------------------------------------------------------------
 ; DrawPixel
-;   A = color (byte copied for each line)
-;   Based on curX, curY
+;   Based on curX, curY and color
 ;-----------------------------------------------------------------------------
 .proc drawPixel
 
     sta     CLR80COL        ; Use RAMWRT for aux mem
 
-    ; set screen pointer
-    ldx     curY            ; Putting Y in X is confusing, sorry
-    inx                     ; offset by 1
+    lda     curY
+    sta     tileY
+    inc     tileY           ; offset by 1
+
     lda     curX
-    clc
-    adc     #1              ; offset by 1
-    asl                     ; x*2
-    adc     lineOffset,x    ; lineOffset(curY)
-    sta     screenPtr0    
-    lda     linePage,x
-    sta     screenPtr1
+    asl                     ; *2
+    adc     #2              ; add offset
+    sta     tileX
 
-    ldx     #8              ; 8 line high
-
-pixel_loop:
-    ldy     #0
-
-    ; Byte 0: AUX memory
     lda     color
-    sta     RAMWRTON  
-    sta     (screenPtr0),y
-    sta     RAMWRTOFF
-    rol     ; put bit 7 into carry
-    rol     color
+    and     #$f
+    ora     colorMode
+    jsr     drawTile_7x8
 
-    ; Byte 1: Main memory
-    lda     color
-    sta     (screenPtr0),y
-    rol     ; put bit 7 into carry
-    rol     color
-
-    ; Byte 2: AUX memory
-    iny
-    lda     color
-    sta     RAMWRTON  
-    sta     (screenPtr0),y
-    sta     RAMWRTOFF
-    rol     ; put bit 7 into carry
-    rol     color
-
-    ; Byte 3: Main memory
-    lda     color
-    sta     (screenPtr0),y
-    rol     ; put bit 7 into carry
-    rol     color
-
-    clc
-    lda     screenPtr1
-    adc     #$04
-    sta     screenPtr1
-    dex
-    bne     pixel_loop
     rts
 
 .endproc
@@ -2073,6 +2107,7 @@ curY:           .byte   0
 
 invMask:        .byte   0
 paintColor:     .byte   $FF
+colorMode:      .byte   $10     ; $10 = color, $20 = B&W
 
 ; Make dimensions a variable incase we want variable tile size
 size:           .byte   0   ; 0=7x8, 1=14x16
@@ -2180,6 +2215,7 @@ colorTable:
 
 
 .align 256
+
 tileSheet_7x8:
 
     ; Color Keys
@@ -2327,60 +2363,61 @@ tileSheet_7x8:
     .byte $00,$00,$00,$00,$00,$00,$00,$00,$70,$3F,$7F,$00,$00,$00,$00,$00           
 
     ; Binary 1
-    .byte $70,$00,$01,$00,$70,$00,$01,$00,$70,$00,$01,$00,$70,$00,$01,$00           
-    .byte $70,$00,$01,$00,$70,$00,$01,$00,$00,$3F,$7E,$00,$00,$00,$00,$00           
+    .byte $10,$00,$00,$00,$10,$00,$00,$00,$10,$00,$00,$00,$10,$00,$00,$00           
+    .byte $10,$00,$00,$00,$10,$00,$00,$00,$00,$3F,$7E,$00,$00,$00,$00,$00           
 
     ; Binary 2
-    .byte $00,$00,$1E,$00,$00,$00,$1E,$00,$00,$00,$1E,$00,$00,$00,$1E,$00           
-    .byte $00,$00,$1E,$00,$00,$00,$1E,$00,$70,$3F,$61,$00,$00,$00,$00,$00           
+    .byte $00,$00,$04,$00,$00,$00,$04,$00,$00,$00,$04,$00,$00,$00,$04,$00           
+    .byte $00,$00,$04,$00,$00,$00,$04,$00,$70,$3F,$61,$00,$00,$00,$00,$00           
 
     ; Binary 3
-    .byte $70,$00,$1F,$00,$70,$00,$1F,$00,$70,$00,$1F,$00,$70,$00,$1F,$00           
-    .byte $70,$00,$1F,$00,$70,$00,$1F,$00,$00,$3F,$60,$00,$00,$00,$00,$00           
+    .byte $30,$00,$06,$00,$30,$00,$06,$00,$30,$00,$06,$00,$30,$00,$06,$00           
+    .byte $30,$00,$06,$00,$30,$00,$06,$00,$00,$3F,$60,$00,$00,$00,$00,$00           
 
     ; Binary 4
-    .byte $00,$03,$60,$00,$00,$03,$60,$00,$00,$03,$60,$00,$00,$03,$60,$00           
-    .byte $00,$03,$60,$00,$00,$03,$60,$00,$70,$3C,$1F,$00,$00,$00,$00,$00           
+    .byte $00,$01,$00,$00,$00,$01,$00,$00,$00,$01,$00,$00,$00,$01,$00,$00           
+    .byte $00,$01,$00,$00,$00,$01,$00,$00,$70,$3C,$1F,$00,$00,$00,$00,$00           
+
 
     ; Binary 5
-    .byte $70,$03,$61,$00,$70,$03,$61,$00,$70,$03,$61,$00,$70,$03,$61,$00           
-    .byte $70,$03,$61,$00,$70,$03,$61,$00,$00,$3C,$1E,$00,$00,$00,$00,$00           
+    .byte $50,$01,$20,$00,$50,$01,$20,$00,$50,$01,$20,$00,$50,$01,$20,$00           
+    .byte $50,$01,$20,$00,$50,$01,$20,$00,$00,$3C,$1E,$00,$00,$00,$00,$00           
 
     ; Binary 6
-    .byte $00,$03,$7E,$00,$00,$03,$7E,$00,$00,$03,$7E,$00,$00,$03,$7E,$00           
-    .byte $00,$03,$7E,$00,$00,$03,$7E,$00,$70,$3C,$01,$00,$00,$00,$00,$00           
+    .byte $00,$01,$4C,$00,$00,$01,$4C,$00,$00,$01,$4C,$00,$00,$01,$4C,$00           
+    .byte $00,$01,$4C,$00,$00,$01,$4C,$00,$70,$3C,$01,$00,$00,$00,$00,$00           
 
     ; Binary 7
-    .byte $70,$03,$7F,$00,$70,$03,$7F,$00,$70,$03,$7F,$00,$70,$03,$7F,$00           
-    .byte $70,$03,$7F,$00,$70,$03,$7F,$00,$00,$3C,$00,$00,$00,$00,$00,$00           
+    .byte $70,$01,$6E,$00,$70,$01,$6E,$00,$70,$01,$6E,$00,$70,$01,$6E,$00           
+    .byte $70,$01,$6E,$00,$70,$01,$6E,$00,$00,$3C,$00,$00,$00,$00,$00,$00           
 
     ; Binary 8
-    .byte $00,$3C,$00,$00,$00,$3C,$00,$00,$00,$3C,$00,$00,$00,$3C,$00,$00           
-    .byte $00,$3C,$00,$00,$00,$3C,$00,$00,$70,$03,$7F,$00,$00,$00,$00,$00           
+    .byte $00,$20,$00,$00,$00,$20,$00,$00,$00,$20,$00,$00,$00,$20,$00,$00           
+    .byte $00,$20,$00,$00,$00,$20,$00,$00,$70,$03,$7F,$00,$00,$00,$00,$00           
 
     ; Binary 9
-    .byte $70,$3C,$01,$00,$70,$3C,$01,$00,$70,$3C,$01,$00,$70,$3C,$01,$00           
-    .byte $70,$3C,$01,$00,$70,$3C,$01,$00,$00,$03,$7E,$00,$00,$00,$00,$00           
+    .byte $10,$24,$01,$00,$10,$24,$01,$00,$10,$24,$01,$00,$10,$24,$01,$00           
+    .byte $10,$24,$01,$00,$10,$24,$01,$00,$00,$03,$7E,$00,$00,$00,$00,$00           
 
     ; Binary A
-    .byte $00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$3C,$1E,$00,$00,$3C,$1E,$00           
-    .byte $00,$3C,$1E,$00,$00,$3C,$1E,$00,$70,$03,$61,$00,$00,$00,$00,$00           
+    .byte $00,$28,$14,$00,$00,$28,$14,$00,$00,$28,$14,$00,$00,$28,$14,$00           
+    .byte $00,$28,$14,$00,$00,$28,$14,$00,$70,$03,$61,$00,$00,$00,$00,$00           
 
     ; Binary B
-    .byte $70,$3C,$1F,$00,$70,$3C,$1F,$00,$70,$3C,$1F,$00,$70,$3C,$1F,$00           
-    .byte $70,$3C,$1F,$00,$70,$3C,$1F,$00,$00,$03,$60,$00,$00,$00,$00,$00           
+    .byte $30,$2C,$17,$00,$30,$2C,$17,$00,$30,$2C,$17,$00,$30,$2C,$17,$00           
+    .byte $30,$2C,$17,$00,$30,$2C,$17,$00,$00,$03,$60,$00,$00,$00,$00,$00           
 
     ; Binary C
-    .byte $00,$3F,$60,$00,$00,$3F,$60,$00,$00,$3F,$60,$00,$00,$3F,$60,$00           
-    .byte $00,$3F,$60,$00,$00,$3F,$60,$00,$70,$00,$1F,$00,$00,$00,$00,$00           
+    .byte $00,$33,$00,$00,$00,$33,$00,$00,$00,$33,$00,$00,$00,$33,$00,$00           
+    .byte $00,$33,$00,$00,$00,$33,$00,$00,$70,$00,$1F,$00,$00,$00,$00,$00           
 
     ; Binary D
-    .byte $70,$3F,$61,$00,$70,$3F,$61,$00,$70,$3F,$61,$00,$70,$3F,$61,$00           
-    .byte $70,$3F,$61,$00,$70,$3F,$61,$00,$00,$00,$1E,$00,$00,$00,$00,$00           
+    .byte $50,$37,$21,$00,$50,$37,$21,$00,$50,$37,$21,$00,$50,$37,$21,$00           
+    .byte $50,$37,$21,$00,$50,$37,$21,$00,$00,$00,$1E,$00,$00,$00,$00,$00           
 
     ; Binary E
-    .byte $00,$3F,$7E,$00,$00,$3F,$7E,$00,$00,$3F,$7E,$00,$00,$3F,$7E,$00           
-    .byte $00,$3F,$7E,$00,$00,$3F,$7E,$00,$70,$00,$01,$00,$00,$00,$00,$00           
+    .byte $00,$3B,$5C,$00,$00,$3B,$5C,$00,$00,$3B,$5C,$00,$00,$3B,$5C,$00           
+    .byte $00,$3B,$5C,$00,$00,$3B,$5C,$00,$70,$00,$01,$00,$00,$00,$00,$00           
 
     ; Binary F
     .byte $70,$3F,$7F,$00,$70,$3F,$7F,$00,$70,$3F,$7F,$00,$70,$3F,$7F,$00           
@@ -2390,29 +2427,30 @@ tileSheet_7x8:
     ; Tiles 30..35
     ;-------------------
 
+
     ; Horizontal pipe
-    .byte $00,$00,$00,$00,$2A,$2A,$55,$55,$6E,$3B,$5D,$77,$6E,$3B,$5D,$77           
-    .byte $6E,$3B,$5D,$77,$6E,$3B,$5D,$77,$2A,$2A,$55,$55,$00,$00,$00,$00           
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$55,$55,$2A,$2A           
+    .byte $55,$55,$2A,$2A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00           
 
     ; Vertical pipe
-    .byte $20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05           
-    .byte $20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05,$20,$3B,$5D,$05           
+    .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$20,$00           
+    .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$20,$00           
 
     ; Upper-left pipe
-    .byte $00,$00,$00,$00,$00,$2A,$54,$55,$20,$3B,$55,$77,$20,$3B,$5D,$77           
-    .byte $20,$3B,$5D,$77,$20,$3B,$5D,$77,$20,$3B,$5D,$55,$20,$3B,$5D,$05           
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$54,$00,$2A           
+    .byte $00,$55,$20,$2A,$00,$15,$20,$00,$00,$01,$20,$00,$00,$01,$20,$00           
 
     ; Upper-right pipe
-    .byte $00,$00,$00,$00,$2A,$2A,$55,$00,$6E,$2B,$5D,$05,$6E,$3B,$5D,$05           
-    .byte $6E,$3B,$5D,$05,$6E,$3B,$5D,$05,$2A,$3B,$5D,$05,$20,$3B,$5D,$05           
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$55,$00,$0A,$00           
+    .byte $55,$01,$2A,$00,$00,$01,$2A,$00,$00,$01,$20,$00,$00,$01,$20,$00           
 
     ; Lower-left pipe
-    .byte $20,$3B,$5D,$05,$20,$3B,$5D,$55,$20,$3B,$5D,$77,$20,$3B,$5D,$77           
-    .byte $20,$3B,$5D,$77,$20,$3B,$55,$77,$00,$2A,$54,$55,$00,$00,$00,$00           
+    .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$15,$20,$00,$00,$55,$20,$2A           
+    .byte $00,$54,$00,$2A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00           
 
     ; Lower-right pipe
-    .byte $20,$3B,$5D,$05,$2A,$3B,$5D,$05,$6E,$3B,$5D,$05,$6E,$3B,$5D,$05           
-    .byte $6E,$3B,$5D,$05,$6E,$2B,$5D,$05,$2A,$2A,$55,$00,$00,$00,$00,$00           
+    .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$2A,$00,$55,$01,$2A,$00           
+    .byte $55,$00,$0A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00           
 
     .res    32*(MAX_TILES-54)
 
