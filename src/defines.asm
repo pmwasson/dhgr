@@ -45,16 +45,29 @@ MONZ            := $FF69    ; Enter monitor
 WAIT            := $FCA8    ; Wait 0.5*(26 + 27*A + 5*A*A) microseconds
 PREAD 			:= $FB1E    ; Read paddle X (0=hor,1=vert on joystick), result in Y
 
+; PRODOS
+MLI             := $BF00    ; PRODOS MLI call
+CMD_QUIT        = $65
+CMD_CREATE      = $C0
+CMD_OPEN        = $C8
+CMD_READ        = $CA
+CMD_WRITE       = $CB
+CMD_CLOSE       = $CC
+
 ; Keyboard
 KEY_CTRL_B 		= $82
 KEY_CTRL_C 		= $83
 KEY_CTRL_D 		= $84
 KEY_CTRL_F 		= $86
 KEY_LEFT        = $88 		; CTRL_H
+KEY_CTRL_I 		= $89
 KEY_DOWN        = $8A 		; CTRL_J
 KEY_UP          = $8B 		; CTRL_K
-KEY_CTRL_M      = $8D
+KEY_CTRL_L 		= $8C
+KEY_RETURN      = $8D    	; CTRL_M
+KEY_CTRL_O 		= $8F
 KEY_CTRL_R 		= $92
+KEY_CTRL_S 		= $93
 KEY_CTRL_T 		= $94
 KEY_RIGHT       = $95 		; CTRL_U
 KEY_ESC         = $9B

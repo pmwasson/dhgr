@@ -44,9 +44,15 @@ BOX_UPPER_RIGHT = 51
 BOX_LOWER_LEFT  = 52
 BOX_LOWER_RIGHT = 53
 
+; memory map
+FILEBUFFER      =   $800        ; PRODOS filebuffer
+
+;------------------------------------------------
 
 .segment "CODE"
 .org    $4000
+
+;------------------------------------------------
 
 .proc main
 
@@ -395,6 +401,40 @@ rotate_after:
 mirror_after:  
 
 
+    ;------------------
+    ; ^L = Load
+    ;------------------
+    cmp     #KEY_CTRL_L
+    bne     :+
+    jsr     inline_print
+    .byte   "Read slot (0-7):",0
+    lda     #8
+    jsr     getInputNumber
+    bmi     load_exit
+    jsr     loadSheet
+
+    ; redraw the screen
+    jsr     reset_loop
+
+load_exit:
+    jmp     command_loop
+:    
+
+    ;------------------
+    ; ^S = Save
+    ;------------------
+    cmp     #KEY_CTRL_S
+    bne     :+
+    jsr     inline_print
+    .byte   "Save slot (0-7):",0
+    lda     #8
+    jsr     getInputNumber
+    bmi     save_exit
+    jsr     saveSheet
+
+save_exit:
+    jmp     command_loop
+: 
 
     ;------------------
     ; ! = Dump
@@ -463,6 +503,18 @@ color_swap_cancel:
 
 :
 
+    ;------------------
+    ; ^I = Info
+    ;------------------
+    cmp     #KEY_CTRL_I
+    bne     :+
+    jsr     inline_print
+    .byte   "Info",13,"DHGR tile editor by Paul Wasson (pmwasson@gmail.com), May 2021",13,0
+    jmp     command_loop
+
+:
+
+
     ;---------------------
     ; 0-9A-Z = Pick color
     ;---------------------
@@ -504,6 +556,36 @@ finish_move:
     lda     #13
     jsr     COUT
     jmp     command_loop
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; getInputNumber
+;   Get input for a number 0..max+1, where A == max+1
+;   Display number or cancel and return result in A (-1 for cancel)
+;-----------------------------------------------------------------------------
+.proc getInputNumber
+    clc
+    adc     #$80 + '0'  ; convert A to ascii number
+    sta     max_digit     
+    jsr     getInput
+    cmp     #$80 + '0'
+    bmi     cancel
+    cmp     max_digit
+    bpl     cancel
+    jsr     COUT
+    sec
+    sbc     #$80 + '0'
+    rts
+cancel:
+    jsr     inline_print
+    .byte   "Cancel",13,0
+    lda     #$ff
+    rts
+
+; local variable
+max_digit:  .byte   0
 
 .endproc
 
@@ -770,14 +852,15 @@ finish_move:
     .byte   "  Ctrl-R:  Rotate pixels in a direction specified by an arrow key",13
     .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
     .byte   "  Ctrl-B:  Toggle between color and binary mode",13
-    .byte   "  !:       Dump bytes",13
     .byte   "  -,=:     Go to previous/next tile",13
     .byte   "  _,+:     Go to previous/next 8 tiles",13
+    .byte   "  Ctrl-L:  Load tile set",13
+    .byte   "  Ctrl-S:  Save tile set",13
+    .byte   "  !:       Dump bytes",13
+    .byte   "  Ctrl-I:  Program information",13
     .byte   "  ?:       This help screen",13
     .byte   "  Q:       Quit",13  
     .byte   "  Escape:  Toggle text/graphics",13
-    ;.byte   "There are 2 tiles sheets in memory, one for 14x16 tiles and one for 7x8 tiles.",13
-    ;.byte   "Each sheet contains 64 tiles that can be editted.",13
     .byte   0
 
     rts
@@ -2644,6 +2727,203 @@ temp:       .byte   0
     rts
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; Load sheet
+;
+;   Load sheet using ProDOS
+;-----------------------------------------------------------------------------
+.proc loadSheet
+
+    ; set filename
+    clc
+    adc     #'0'
+    sta     pathname+8
+
+    lda     #13
+    jsr     COUT
+
+    ; open file
+    jsr     MLI
+    .byte   CMD_OPEN
+    .word   open_params
+    bcc     :+
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to open file",13,0
+    rts
+:
+    jsr    inline_print
+    .byte  "File open",13,0
+
+    ; set reference number 
+    lda     open_params+5
+    sta     read_params+1
+    sta     close_params+1
+
+    ; read data
+    jsr    MLI
+    .byte  CMD_READ
+    .word  read_params
+    bcc    :+
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to read data",13,0
+:
+    jsr    inline_print
+    .byte  "Data read",13,0
+
+    jsr    MLI
+    .byte  CMD_CLOSE
+    .word  close_params
+    bcc    :+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to close file",13,0
+:
+    jsr    inline_print
+    .byte  "Load complete",13,0
+
+    rts
+    
+open_params:
+    .byte   $3
+    .word   pathname      
+    .word   FILEBUFFER
+    .byte   $0                  ; reference number
+
+pathname:
+    .byte   8,"TILESET0"
+
+read_params:
+    .byte   $4
+    .byte   $0                  ; reference number
+    .word   TILESHEET           ; address of data buffer
+    .word   TILESHEET_SIZE      ; number of bytes to read
+    .word   $0                  ; number of bytes read
+
+close_params:
+    .byte   $1
+    .byte   $0                  ; reference number
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Save sheet
+;
+;   Use prodos to save tile data
+;-----------------------------------------------------------------------------
+.proc saveSheet
+
+    ; set filename
+    clc
+    adc     #'0'
+    sta     pathname+8
+
+    lda     #13
+    jsr     COUT
+
+    ; open file
+    jsr     MLI
+    .byte   CMD_OPEN
+    .word   open_params
+    bcc     open_good
+    
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to open file, creating new",13,0
+
+    ; create file
+     jsr     MLI
+    .byte   CMD_CREATE
+    .word   create_params
+    bcc     :+   
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to create file",13,0
+    rts    ; give up!
+:
+
+    ; open file again!
+    jsr     MLI
+    .byte   CMD_OPEN
+    .word   open_params
+    bcc     open_good
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":still unable to open file",13,0
+    rts    ; give up
+
+open_good:
+    jsr    inline_print
+    .byte  "File open",13,0
+
+    ; set reference number 
+    lda     open_params+5
+    sta     write_params+1
+    sta     close_params+1
+
+    ; write data
+    jsr    MLI
+    .byte  CMD_WRITE
+    .word  write_params
+    bcc    :+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to write data",13,0
+:
+    jsr    inline_print
+    .byte  "Data written",13,0
+
+    jsr    MLI
+    .byte  CMD_CLOSE
+    .word  close_params
+    bcc    :+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to close file",13,0
+:
+    jsr    inline_print
+    .byte  "Save complete",13,0
+
+    rts
+    
+open_params:
+    .byte   $3
+    .word   pathname      
+    .word   FILEBUFFER
+    .byte   $0                  ; reference number
+
+pathname:
+    .byte   8,"TILESET0"
+
+create_params:
+    .byte   $7
+    .word   pathname
+    .byte   $C3                 ; access bits (full access)
+    .byte   $6                  ; file type (binary)
+    .word   TILESHEET
+    .byte   $1                  ; storage type (standard)
+    .word   $0                  ; creation date
+    .word   $0                  ; creation time
+
+write_params:
+    .byte   $4
+    .byte   $0                  ; reference number
+    .word   TILESHEET           ; address of data buffer
+    .word   TILESHEET_SIZE      ; number of bytes to write
+    .word   $0                  ; number of bytes written
+
+close_params:
+    .byte   $1
+    .byte   $0                  ; reference number
+
+.endproc
+
 ;-----------------------------------------------------------------------------
 ; Utilies
 
@@ -2773,6 +3053,9 @@ colorTable:
 
 
 .align 256
+
+TILESHEET_SIZE = TILESHEET_END - TILESHEET
+TILESHEET:
 
 tileSheet_7x8:
 
@@ -3071,5 +3354,5 @@ tileSheet_14x16:
 
     .res    128*(MAX_TILES-5)
 
-end_of_program:
-    .byte 0
+TILESHEET_END:
+    .dword  .time   ; Time of compilation
