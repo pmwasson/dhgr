@@ -384,12 +384,12 @@ rotate_after:
 
     cmp     #DIR_UP         ; warning depends on order of enum
     bpl     :+
-    ;jsr     mirrorHorz
+    jsr     mirrorHorz
     jmp     rotate_done     ; share code
 :
 
     ; must be vertical
-    ;jsr     mirrorVert
+    jsr     mirrorVert
     jmp     rotate_done     ; share code
 
 mirror_after:  
@@ -713,6 +713,7 @@ finish_move:
     .byte   "  0-9,A-F: Set paint color",13
     .byte   "  Space:   Paint pixel",13
     .byte   "  Ctrl-F:  Fill entire tile with paint color",13
+    .byte   "  Ctrl-C:  Swap 2 specified colors",13
     .byte   "  Ctrl-M:  Mirror pixels in a direction specified by an arrow key",13
     .byte   "  Ctrl-R:  Rotate pixels in a direction specified by an arrow key",13
     .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
@@ -979,6 +980,121 @@ row_loop:
 
 temp:       .byte   0
 loopCount:  .byte   0
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; Mirror horizontal
+;   Swap bytes
+;-----------------------------------------------------------------------------
+.proc mirrorHorz
+
+    lda     #0
+    sta     rowCount
+
+row_loop:
+
+    lda     width
+    lsr     ; /2
+    sta     colCount
+
+    ; set up offsets
+
+    lda     rowCount
+    asl
+    asl
+    asl
+    asl     ; *16
+    tax
+    clc
+    adc     width_m1
+    tay
+
+
+col_loop:
+    ; swap data
+    lda     pixelData,x
+    sta     temp
+    lda     pixelData,y
+    sta     pixelData,x
+    lda     temp
+    sta     pixelData,y
+
+    inx
+    dey
+    dec     colCount
+
+    bne     col_loop
+
+    inc     rowCount
+    lda     rowCount
+    cmp     height
+    bne     row_loop
+    rts
+
+temp:       .byte   0
+rowCount:   .byte   0
+colCount:   .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Mirror vertically
+;   Swap bytes
+;-----------------------------------------------------------------------------
+.proc mirrorVert
+
+    lda     #0
+    sta     colCount
+
+col_loop:
+
+    lda     height
+    lsr     ; /2
+    sta     rowCount
+
+    ; set up offsets
+
+    lda     colCount
+    tax
+    adc     height_x16
+    sec
+    sbc     #16
+    tay
+
+
+row_loop:
+    ; swap data
+    lda     pixelData,x
+    sta     temp
+    lda     pixelData,y
+    sta     pixelData,x
+    lda     temp
+    sta     pixelData,y
+
+    txa
+    clc
+    adc     #16
+    tax
+
+    tya
+    sec
+    sbc     #16
+    tay
+
+    dec     rowCount
+    bne     row_loop
+
+    inc     colCount
+    lda     colCount
+    cmp     width
+    bne     col_loop
+    rts
+
+temp:       .byte   0
+rowCount:   .byte   0
+colCount:   .byte   0
 
 .endproc
 
