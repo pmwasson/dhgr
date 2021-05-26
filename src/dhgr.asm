@@ -335,7 +335,7 @@ set_color_mode:
 
 
     ;------------------
-    ; R = Rotate
+    ; ^R = Rotate
     ;------------------
     cmp     #KEY_CTRL_R
     bne     rotate_after
@@ -372,10 +372,10 @@ rotate_cancel:
 
 rotate_after:  
 
-    ;------------------
-    ; M = Mirror
-    ;------------------
-    cmp     #KEY_CTRL_M
+    ;-----------------------
+    ; ^D = Direction Mirror
+    ;-----------------------
+    cmp     #KEY_CTRL_D
     bne     mirror_after
     jsr     inline_print
     .byte   "Mirror Direction (or cancel):",0
@@ -394,200 +394,6 @@ rotate_after:
 
 mirror_after:  
 
-; DHGR Colors
-;---------------------
-; 0 - black
-; 1 - dark blue
-; 2 - dark green
-; 3 - medium blue
-; 4 - brown
-; 5 - gray (1)
-; 6 - light green
-; 7 - aqua
-; 8 - red
-; 9 - purple
-; A - gray (2)
-; B - light blue
-; C - orange
-; D - pink
-; E - yellow
-; F - white
-
-    ;------------------
-    ; 0 = black
-    ;------------------
-    cmp     #$80 | '0'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = black ($0)",13,0
-    lda     #$00
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 1 = dark blue
-    ;------------------
-    cmp     #$80 | '1'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = dark blue ($1)",13,0
-    lda     #$11
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 2 = dark green
-    ;------------------
-    cmp     #$80 | '2'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = dark green ($2)",13,0
-    lda     #$22
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 3 = medium blue
-    ;------------------
-    cmp     #$80 | '3'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = medium blue ($3)",13,0
-    lda     #$33
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 4 = brown
-    ;------------------
-    cmp     #$80 | '4'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = brown ($4)",13,0
-    lda     #$44
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 5 = gray (1)
-    ;------------------
-    cmp     #$80 | '5'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = gray-1 ($5)",13,0
-    lda     #$55
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 6 = light green
-    ;------------------
-    cmp     #$80 | '6'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = light green ($6)",13,0
-    lda     #$66
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 7 = Aqua
-    ;------------------
-    cmp     #$80 | '7'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = aqua ($7)",13,0
-    lda     #$77
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 8 = Red
-    ;------------------
-    cmp     #$80 | '8'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = red ($8)",13,0
-    lda     #$88
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; 9 = Purple
-    ;------------------
-    cmp     #$80 | '9'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = purple ($9)",13,0
-    lda     #$99
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; A = Gray (2)
-    ;------------------
-    cmp     #$80 | 'A'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = gray-2 ($A)",13,0
-    lda     #$AA
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; B = Light blue
-    ;------------------
-    cmp     #$80 | 'B'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = light blue ($B)",13,0
-    lda     #$BB
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; C = Orange
-    ;------------------
-    cmp     #$80 | 'C'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = orange ($C)",13,0
-    lda     #$CC
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; D = Pink
-    ;------------------
-    cmp     #$80 | 'D'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = pink ($D)",13,0
-    lda     #$DD
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; E = Yellow
-    ;------------------
-    cmp     #$80 | 'E'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = yellow ($E)",13,0
-    lda     #$EE
-    jmp     finish_color    
-:
-
-    ;------------------
-    ; F = white
-    ;------------------
-    cmp     #$80 | 'F'
-    bne     :+
-    jsr     inline_print
-    .byte   "Color = white ($F)",13,0
-    lda     #$FF
-    jmp     finish_color    
-:
 
 
     ;------------------
@@ -626,7 +432,51 @@ mirror_after:
     .byte   "Help (ESC when done)",13,0
     jsr     printHelp
     jmp     command_loop
+:
 
+    ;------------------
+    ; ^C = Color Swap
+    ;------------------
+    cmp     #KEY_CTRL_C
+    bne     :+
+    jsr     inline_print
+    .byte   "Color swap",13,"First color (or cancel):",0
+    jsr     getInput
+    jsr     getInputColor
+    sta     swapColor1
+    cmp     #$80
+    beq     color_swap_cancel
+    jsr     inline_print
+    .byte   "Second color (or cancel):",0
+    jsr     getInput
+    jsr     getInputColor
+    sta     swapColor2
+    cmp     #$80
+    beq     color_swap_cancel
+    jsr     swapColors
+    jsr     updateAll
+    jmp     reset_loop
+color_swap_cancel:
+    jsr     inline_print
+    .byte   "Cancel",13,0
+    jmp     command_loop
+
+:
+
+    ;---------------------
+    ; 0-9A-Z = Pick color
+    ;---------------------
+
+    ; This should be the last input choice
+    ; as it corrupts the keystroke if it fails
+
+    jsr     getInputColor
+    cmp     #$80    ; did it fail
+    beq     :+
+    ; finish color
+    sta     paintColor
+    jsr     drawColorKey
+    jmp     command_loop
 :
 
     ;------------------
@@ -634,12 +484,6 @@ mirror_after:
     ;------------------
     jsr     inline_print
     .byte   "Unknown command (? for help)",13,0
-    jmp     command_loop
-
-; jump to after changing color
-finish_color:
-    sta     paintColor
-    jsr     drawColorKey
     jmp     command_loop
 
 ; jump to after changing coordinates
@@ -703,6 +547,214 @@ finish_move:
     rts
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; Get input color
+;   Pick and diplay color
+;   return $80 if invalid color picked
+;-----------------------------------------------------------------------------
+.proc getInputColor
+
+    ; DHGR Colors
+    ;---------------------
+    ; 0 - black
+    ; 1 - dark blue
+    ; 2 - dark green
+    ; 3 - medium blue
+    ; 4 - brown
+    ; 5 - gray (1)
+    ; 6 - light green
+    ; 7 - aqua
+    ; 8 - red
+    ; 9 - purple
+    ; A - gray (2)
+    ; B - light blue
+    ; C - orange
+    ; D - pink
+    ; E - yellow
+    ; F - white
+
+    ;------------------
+    ; 0 = black
+    ;------------------
+    cmp     #$80 | '0'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = black ($0)",13,0
+    lda     #$00
+    rts  
+:
+
+    ;------------------
+    ; 1 = dark blue
+    ;------------------
+    cmp     #$80 | '1'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = dark blue ($1)",13,0
+    lda     #$11
+    rts     
+:
+
+    ;------------------
+    ; 2 = dark green
+    ;------------------
+    cmp     #$80 | '2'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = dark green ($2)",13,0
+    lda     #$22
+    rts   
+:
+
+    ;------------------
+    ; 3 = medium blue
+    ;------------------
+    cmp     #$80 | '3'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = medium blue ($3)",13,0
+    lda     #$33
+    rts   
+:
+
+    ;------------------
+    ; 4 = brown
+    ;------------------
+    cmp     #$80 | '4'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = brown ($4)",13,0
+    lda     #$44
+    rts    
+:
+
+    ;------------------
+    ; 5 = gray (1)
+    ;------------------
+    cmp     #$80 | '5'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = gray-1 ($5)",13,0
+    lda     #$55
+    rts    
+:
+
+    ;------------------
+    ; 6 = light green
+    ;------------------
+    cmp     #$80 | '6'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = light green ($6)",13,0
+    lda     #$66
+    rts  
+:
+
+    ;------------------
+    ; 7 = Aqua
+    ;------------------
+    cmp     #$80 | '7'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = aqua ($7)",13,0
+    lda     #$77
+    rts    
+:
+
+    ;------------------
+    ; 8 = Red
+    ;------------------
+    cmp     #$80 | '8'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = red ($8)",13,0
+    lda     #$88
+    rts     
+:
+
+    ;------------------
+    ; 9 = Purple
+    ;------------------
+    cmp     #$80 | '9'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = purple ($9)",13,0
+    lda     #$99
+    rts    
+:
+
+    ;------------------
+    ; A = Gray (2)
+    ;------------------
+    cmp     #$80 | 'A'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = gray-2 ($A)",13,0
+    lda     #$AA
+    rts     
+:
+
+    ;------------------
+    ; B = Light blue
+    ;------------------
+    cmp     #$80 | 'B'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = light blue ($B)",13,0
+    lda     #$BB
+    rts     
+:
+
+    ;------------------
+    ; C = Orange
+    ;------------------
+    cmp     #$80 | 'C'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = orange ($C)",13,0
+    lda     #$CC
+    rts    
+:
+
+    ;------------------
+    ; D = Pink
+    ;------------------
+    cmp     #$80 | 'D'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = pink ($D)",13,0
+    lda     #$DD
+    rts   
+:
+
+    ;------------------
+    ; E = Yellow
+    ;------------------
+    cmp     #$80 | 'E'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = yellow ($E)",13,0
+    lda     #$EE
+    rts   
+:
+
+    ;------------------
+    ; F = white
+    ;------------------
+    cmp     #$80 | 'F'
+    bne     :+
+    jsr     inline_print
+    .byte   "Color = white ($F)",13,0
+    lda     #$FF
+    rts   
+:
+
+    ; Cancel!
+    lda     #$80
+    rts
+.endproc
+
 ;-----------------------------------------------------------------------------
 ; printHelp
 ;-----------------------------------------------------------------------------
@@ -712,9 +764,9 @@ finish_move:
     .byte   "  Arrows:  Move cursor",13
     .byte   "  0-9,A-F: Set paint color",13
     .byte   "  Space:   Paint pixel",13
-    .byte   "  Ctrl-F:  Fill entire tile with paint color",13
+    .byte   "  Ctrl-F:  Fill tile with paint color",13
     .byte   "  Ctrl-C:  Swap 2 specified colors",13
-    .byte   "  Ctrl-M:  Mirror pixels in a direction specified by an arrow key",13
+    .byte   "  Ctrl-D:  Directional Mirror: mirror tile in an arrow key direction",13
     .byte   "  Ctrl-R:  Rotate pixels in a direction specified by an arrow key",13
     .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
     .byte   "  Ctrl-B:  Toggle between color and binary mode",13
@@ -1098,6 +1150,35 @@ colCount:   .byte   0
 
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; Swap Colors
+;
+;   Just go through whole buffer
+;-----------------------------------------------------------------------------
+
+.proc swapColors
+
+    ldx     #0
+
+loop:
+    lda     pixelData,x
+    cmp     swapColor1
+    bne     :+
+    lda     swapColor2
+    sta     pixelData,x
+    jmp     continue
+:
+    cmp     swapColor2
+    bne     continue
+    lda     swapColor1
+    sta     pixelData,x
+continue:
+    inx
+    bne     loop
+    rts
+
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; Draw screen
@@ -2581,6 +2662,9 @@ curY:           .byte   0
 invMask:        .byte   0
 paintColor:     .byte   $FF
 colorMode:      .byte   $10     ; $10 = color, $20 = B&W
+
+swapColor1:     .byte   $0
+swapColor2:     .byte   $0
 
 ; Make dimensions a variable incase we want variable tile size
 size:           .byte   0   ; 0=7x8, 1=14x16
