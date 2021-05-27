@@ -55,9 +55,11 @@ CMD_WRITE       = $CB
 CMD_CLOSE       = $CC
 
 ; Keyboard
+KEY_CTRL_A 		= $81
 KEY_CTRL_B 		= $82
 KEY_CTRL_C 		= $83
 KEY_CTRL_D 		= $84
+KEY_CTRL_E 		= $85
 KEY_CTRL_F 		= $86
 KEY_LEFT        = $88 		; CTRL_H
 KEY_CTRL_I 		= $89
@@ -69,6 +71,7 @@ KEY_CTRL_O 		= $8F
 KEY_CTRL_R 		= $92
 KEY_CTRL_S 		= $93
 KEY_CTRL_T 		= $94
+KEY_CTRL_V 		= $96
 KEY_RIGHT       = $95 		; CTRL_U
 KEY_ESC         = $9B
 KEY_SPACE       = $A0

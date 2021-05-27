@@ -278,6 +278,41 @@ next_continue8:
 :
 
     ;------------------
+    ; ^C = Copy Tile
+    ;------------------
+    cmp     #KEY_CTRL_C
+    bne     :+
+    jsr     inline_print
+    .byte   "Copy tile to clipboard",13,0
+    jsr     copyTile
+    jmp     command_loop
+:
+
+    ;------------------
+    ; ^V = Paste Tile
+    ;------------------
+    cmp     #KEY_CTRL_V
+    bne     :+
+    jsr     inline_print
+    .byte   "Paste tile from clipboard",13,0
+    jsr     pasteTile
+    jsr     updateAll
+    jmp     reset_loop
+:
+
+    ;------------------
+    ; ^A = Add Tile
+    ;------------------
+    cmp     #KEY_CTRL_A
+    bne     :+
+    jsr     inline_print
+    .byte   "Add clipboard to tile",13,0
+    jsr     addTile
+    jsr     updateAll
+    jmp     reset_loop
+:
+
+    ;------------------
     ; ^F = Fill Color
     ;------------------
     cmp     #KEY_CTRL_F
@@ -291,9 +326,7 @@ next_continue8:
     jsr     COUT
     jsr     fillPixels
     jsr     updateAll
-    jsr     drawTilePixels
-    jsr     drawPreview
-    jmp     command_loop
+    jmp     reset_loop
 :
 
     ;------------------
@@ -479,12 +512,12 @@ save_exit:
 :
 
     ;------------------
-    ; ^C = Color Swap
+    ; ^E = Exchange colors
     ;------------------
-    cmp     #KEY_CTRL_C
+    cmp     #KEY_CTRL_E
     bne     :+
     jsr     inline_print
-    .byte   "Color swap",13,"First color (or cancel):",0
+    .byte   "Exchange colors",13,"First color (or cancel):",0
     jsr     getInput
     jsr     getInputColor
     sta     swapColor1
@@ -850,8 +883,11 @@ max_digit:  .byte   0
     .byte   "  Arrows:  Move cursor",13
     .byte   "  0-9,A-F: Set paint color",13
     .byte   "  Space:   Paint pixel",13
-    .byte   "  Ctrl-F:  Fill tile with paint color",13
-    .byte   "  Ctrl-C:  Swap 2 specified colors",13
+    .byte   "  Ctrl-F:  Fill tile with paint color (overwrites current tile)",13
+    .byte   "  Ctrl-C:  Copy tile to clipboard",13
+    .byte   "  Ctrl-V:  Paste tile from clipboard (overwrites current tile)",13
+    .byte   "  Ctrl-A:  Add clipboard to current tile (black pixels ignored)",13
+    .byte   "  Ctrl-E:  Exchange 2 specified colors",13
     .byte   "  Ctrl-D:  Directional Mirror: mirror tile in an arrow key direction",13
     .byte   "  Ctrl-R:  Rotate pixels in a direction specified by an arrow key",13
     .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
@@ -914,6 +950,92 @@ dump_count: .byte   0
 
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; Copy tile
+;  Copy pixels to clipboard
+;-----------------------------------------------------------------------------
+.proc copyTile
+
+    lda     size
+    beq     small
+
+    ; for large, copy all bytes
+
+    ldy     #0
+:
+    lda     pixelData,y
+    sta     clipboardData,y
+    iny
+    bne     :-
+
+    rts
+
+small:
+    ; for the smaller tile set unused bytes to zero
+
+    ldy     #0
+
+loop0:    
+    ldx     #0
+
+loop1:
+    lda     pixelData,y
+    sta     clipboardData,y
+    iny
+    inx
+    cpx     #7
+    bne     loop1
+
+    lda     #0
+loop2:
+    sta     clipboardData,y
+    iny
+    inx
+    cpx     #16
+    bne     loop2
+
+    cpy     #8*16   ; height * 16
+    bne     loop0
+
+    ; fill rest with zeros
+:
+    sta     clipboardData,y
+    iny
+    bne     :-
+
+    rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; Paste tile
+;  Copy pixels from clipboard
+;-----------------------------------------------------------------------------
+.proc pasteTile
+    ldy     #0
+:
+    lda     clipboardData,y
+    sta     pixelData,y
+    iny
+    bne     :-
+    rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; Add tile
+;  Copy non-black pixels from clipboard
+;-----------------------------------------------------------------------------
+.proc addTile
+    ldy     #0
+loop:
+    lda     clipboardData,y
+    beq     :+
+    sta     pixelData,y
+:
+    iny
+    bne     loop
+    rts
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; Rotate up 
@@ -2707,7 +2829,6 @@ temp:       .byte   0
     rts
 .endproc
 
-
 ;-----------------------------------------------------------------------------
 ; Load sheet
 ;
@@ -2956,6 +3077,9 @@ boxBottom:          .byte   0
 ; Just store 1 pixel per byte and pad out to power of 2
 .align      256
 pixelData:
+    .res    16*16
+
+clipboardData:
     .res    16*16
 
 ; Lookup tables
@@ -3285,8 +3409,7 @@ tileSheet_7x8:
     ; Tiles 00..0F
     ;-------------------
 
-    ; @ = heart
-    .res    32                                         
+    ; @ = heart                              
     .byte $00,$34,$1A,$00,$50,$77,$3B,$06,$5D,$77,$3B,$6E,$5D,$77,$3B,$6E           
     .byte $50,$77,$3B,$06,$50,$77,$3B,$06,$00,$37,$3A,$00,$00,$03,$20,$00           
 
