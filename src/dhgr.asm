@@ -79,7 +79,11 @@ reset_loop:
 
 command_loop:
     jsr     inline_print
-    .byte   "Command:",0
+    .byte   "Tile(",0
+    lda     tileIndex
+    jsr     PRBYTE
+    jsr     inline_print
+    .byte   ") Command:",0
 
 skip_prompt:
     jsr     getInput    ; Wait for a keypress
@@ -1306,22 +1310,22 @@ continue:
     lda     boxTop
     sta     tileY
     lda     #BOX_UPPER_LEFT
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
 
     lda     boxRight
     sta     tileX    
     lda     #BOX_UPPER_RIGHT
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
 
     lda     boxBottom
     sta     tileY
     lda     #BOX_LOWER_RIGHT
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
 
     lda     boxLeft
     sta     tileX
     lda     #BOX_LOWER_LEFT
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
 
     ; Draw horizontal
 
@@ -1331,12 +1335,12 @@ continue:
     lda     boxTop
     sta     tileY
     lda     #BOX_HORZ
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
     
     lda     boxBottom
     sta     tileY
     lda     #BOX_HORZ
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
     
     inc     tileX
     inc     tileX
@@ -1354,12 +1358,12 @@ continue:
     lda     boxLeft
     sta     tileX
     lda     #BOX_VERT
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
     
     lda     boxRight
     sta     tileX
     lda     #BOX_VERT
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
     
     inc     tileY
     lda     boxBottom
@@ -1512,7 +1516,7 @@ loopx:
 
     lda     colorX
     ora     colorMode
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
 
     inc     tileY
 
@@ -1526,7 +1530,7 @@ loopx:
 
 :
     lda     colorX
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
 
     lda     #0
     sta     invMask
@@ -1535,61 +1539,6 @@ loopx:
     lda     colorX
     cmp     #16
     bne     loopx
-    rts
-
-
-
-    jsr     saveCursor
-
-    ; set up coordinates
-    lda     #0
-    sta     curX
-    lda     #17
-    sta     curY
-
-    ; loop through colors
-loop:
-
-    ; Draw color pixel
-    ldx     curX
-    lda     colorTable,x
-    sta     color
-    jsr     drawPixel
-
-    lda     #19
-    sta     tileY
-
-    ; Calc label X
-    lda     curX
-    clc
-    adc     #1      ; + offset
-    asl             ; *2
-    sta     tileX
-
-    ; Set mask
-    lda     #$00
-    sta     invMask
-    lda     paintColor
-    and     #$0f
-    cmp     curX
-    bne     :+
-    lda     #$ff
-    sta     invMask
-:
-
-    lda     curX
-    jsr     drawTile_7x8
-
-    lda     #$00
-    sta     invMask
-
-    inc     curX
-    lda     curX
-    cmp     #16
-    bne     loop
-
-    jsr     saveCursor      ; restore cursor
-
     rts
 
 colorX:     .byte 0
@@ -1787,7 +1736,7 @@ saveCurY:   .byte   0
     lda     color
     and     #$f
     ora     colorMode
-    jsr     drawTile_7x8
+    jsr     drawInterfaceTile_7x8
 
     rts
 
@@ -2055,7 +2004,7 @@ temp0:  .byte   0
     tya     ; restore A
     lsr                     ; /2
     clc
-    adc     #>tileSheet_14x16
+    adc     currentSheet_14x16+1
     sta     tilePtr1
     rts
 
@@ -2083,6 +2032,8 @@ temp0:  .byte   0
 
     ; tile index passes in A
     jsr     setTilePointer_7x8
+
+bypassTilePointer:
 
     sta     CLR80COL        ; Use RAMWRT for aux mem
 
@@ -2162,12 +2113,41 @@ temp0:  .byte   0
     lsr
     lsr
     clc
-    adc     #>tileSheet_7x8
+    adc     currentSheet_7x8+1
     sta     tilePtr1
 
     rts
 
 .endproc
+
+;-----------------------------------------------------------------------------
+; draw interface tile 7x8
+;
+; Special version of draw tile for the interface
+;-----------------------------------------------------------------------------
+
+.proc drawInterfaceTile_7x8
+    ; calc tile ptr using interface tilesheet
+
+    tay     ; copy A
+    ; calculate tile pointer
+    asl                     ; *32
+    asl
+    asl
+    asl
+    asl
+    sta     tilePtr0
+    tya     ; restore A
+    lsr                     ; /8
+    lsr
+    lsr
+    clc
+    adc     #>interface_7x8
+    sta     tilePtr1
+
+    jmp     drawTile_7x8::bypassTilePointer
+.endproc
+
 
 ;-----------------------------------------------------------------------------
 ; setTilePointer
@@ -2932,43 +2912,46 @@ close_params:
 ; Global Variables
 ;-----------------------------------------------------------------------------
 
-screenPage:     .byte   $20
-tileX:          .byte   0
-tileY:          .byte   0
-tileIndex:      .byte   0
-curX:           .byte   0
-curY:           .byte   0
+currentSheet_7x8:   .word   tileSheet_7x8
+currentSheet_14x16: .word   tileSheet_14x16
 
-invMask:        .byte   0
-paintColor:     .byte   $FF
-colorMode:      .byte   $10     ; $10 = color, $20 = B&W
-
-swapColor1:     .byte   $0
-swapColor2:     .byte   $0
-
+screenPage:         .byte   $20
+tileX:              .byte   0
+tileY:              .byte   0
+tileIndex:          .byte   0
+curX:               .byte   0
+curY:               .byte   0
+    
+invMask:            .byte   0
+paintColor:         .byte   $FF
+colorMode:          .byte   $10     ; $10 = color, $20 = B&W
+    
+swapColor1:         .byte   $0
+swapColor2:         .byte   $0
+    
 ; Make dimensions a variable incase we want variable tile size
-size:           .byte   0   ; 0=7x8, 1=14x16
-width:          .byte   0
-width_m1:       .byte   0
-height:         .byte   0
-height_m1:      .byte   0
-height_x16:     .byte   0
-length:         .byte   0
-
+size:               .byte   0   ; 0=7x8, 1=14x16
+width:              .byte   0
+width_m1:           .byte   0
+height:             .byte   0
+height_m1:          .byte   0
+height_x16:         .byte   0
+length:             .byte   0
+    
 ; Conversion from pixels to bytes
-pixelOffset:    .byte   0
-tileOffset:     .byte   0
-
-pixelByte0:     .byte   0
-pixelByte1:     .byte   0
-pixelByte2:     .byte   0
-pixelByte3:     .byte   0
-
-; Box routine
-boxLeft:        .byte   0
-boxRight:       .byte   0
-boxTop:         .byte   0
-boxBottom:      .byte   0
+pixelOffset:        .byte   0
+tileOffset:         .byte   0
+    
+pixelByte0:         .byte   0
+pixelByte1:         .byte   0
+pixelByte2:         .byte   0
+pixelByte3:         .byte   0
+    
+; Box routine   
+boxLeft:            .byte   0
+boxRight:           .byte   0
+boxTop:             .byte   0
+boxBottom:          .byte   0
 
 ; Just store 1 pixel per byte and pad out to power of 2
 .align      256
@@ -3051,13 +3034,9 @@ colorTable:
     .byte   $E * $11
     .byte   $F * $11
 
-
+; Internal tile sheet for interface
 .align 256
-
-TILESHEET_SIZE = TILESHEET_END - TILESHEET
-TILESHEET:
-
-tileSheet_7x8:
+interface_7x8:
 
     ; Color Keys
     ; Tiles 00..0F
@@ -3294,7 +3273,96 @@ tileSheet_7x8:
     .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$2A,$00,$55,$01,$2A,$00           
     .byte $55,$00,$0A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00           
 
-    .res    32*(MAX_TILES-54)
+
+.align 256
+
+TILESHEET_SIZE = TILESHEET_END - TILESHEET
+TILESHEET:
+
+tileSheet_7x8:
+
+    ; Color Keys
+    ; Tiles 00..0F
+    ;-------------------
+
+    ; @ = heart
+    .res    32                                         
+    .byte $00,$34,$1A,$00,$50,$77,$3B,$06,$5D,$77,$3B,$6E,$5D,$77,$3B,$6E           
+    .byte $50,$77,$3B,$06,$50,$77,$3B,$06,$00,$37,$3A,$00,$00,$03,$20,$00           
+
+    ; A
+    .byte $00,$0F,$78,$00,$40,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07           
+    .byte $70,$7F,$7F,$07,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$00,$00,$00,$00           
+
+    ; B
+    .byte $70,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7F,$7F,$01           
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; C
+    .byte $40,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$00,$1F,$00,$70,$00,$1F,$00           
+    .byte $70,$00,$1F,$00,$70,$7C,$1F,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; D
+    .byte $70,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7C,$1F,$07           
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; E
+    .byte $70,$7F,$7F,$07,$70,$00,$1F,$00,$70,$00,$1F,$00,$70,$3F,$7F,$00           
+    .byte $70,$00,$1F,$00,$70,$00,$1F,$00,$70,$7F,$7F,$07,$00,$00,$00,$00           
+
+    ; F
+    .byte $70,$7F,$7F,$07,$70,$00,$1F,$00,$70,$00,$1F,$00,$70,$3F,$7F,$00           
+    .byte $70,$00,$1F,$00,$70,$00,$1F,$00,$70,$00,$1F,$00,$00,$00,$00,$00           
+    
+    ; G..Z [\]_ = 20+5
+    .res    32*25
+
+    ; <sp> ! " # $ % & ' ( ) * + , - . /
+    .res    32*16
+
+    ; 0
+    .byte $40,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7C,$1F,$07           
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; 1
+    .byte $00,$0F,$78,$00,$00,$0F,$7E,$00,$40,$0F,$7F,$00,$00,$0F,$78,$00           
+    .byte $00,$0F,$78,$00,$00,$0F,$78,$00,$40,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; 2
+    .byte $70,$7F,$7F,$01,$00,$7C,$00,$07,$00,$7C,$00,$07,$40,$7F,$7F,$01           
+    .byte $70,$00,$1F,$00,$70,$00,$1F,$00,$70,$7F,$7F,$07,$00,$00,$00,$00           
+
+    ; 3
+    .byte $70,$7F,$7F,$01,$00,$7C,$00,$07,$00,$7C,$00,$07,$00,$7F,$7E,$01           
+    .byte $00,$7C,$00,$07,$00,$7C,$00,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; 4
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$70,$7F,$7F,$07           
+    .byte $00,$7C,$00,$07,$00,$7C,$00,$07,$00,$7C,$00,$07,$00,$00,$00,$00           
+
+    ; 5
+    .byte $70,$7F,$7F,$07,$70,$00,$1F,$00,$70,$00,$1F,$00,$70,$7F,$7F,$01           
+    .byte $00,$7C,$00,$07,$00,$7C,$00,$07,$70,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; 6
+    .byte $40,$7F,$7F,$01,$70,$00,$1F,$00,$70,$00,$1F,$00,$70,$7F,$7F,$01           
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; 7
+    .byte $70,$7F,$7F,$07,$00,$7C,$00,$07,$00,$7C,$00,$07,$00,$7F,$00,$01           
+    .byte $00,$3F,$60,$00,$00,$0F,$78,$00,$00,$0F,$78,$00,$00,$00,$00,$00           
+
+    ; 8
+    .byte $40,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$40,$7F,$7F,$01           
+    .byte $70,$7C,$1F,$07,$70,$7C,$1F,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; 9
+    .byte $40,$7F,$7F,$01,$70,$7C,$1F,$07,$70,$7C,$1F,$07,$40,$7F,$7F,$07           
+    .byte $00,$7C,$00,$07,$00,$7C,$00,$07,$40,$7F,$7F,$01,$00,$00,$00,$00           
+
+    ; : ; < = > ?
+
+    .res    32*6
 
 .align 256
 
