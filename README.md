@@ -4,6 +4,8 @@ This is an editor to create double hi-res graphics for a tile-based game.
 
 It supports 2 sizes of tiles 7x8 or 14x16 color pixels (where each color pixel = 4 sub-pixels).
 
+Pressing ? will bring up a help screen with all the supported commands.
+
 ## Download
 You can grab the latest disk image for PRODOS: https://github.com/pmwasson/dhgr/raw/main/disk/dhgr_prodos.dsk
 
