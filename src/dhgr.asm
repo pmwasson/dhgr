@@ -503,9 +503,27 @@ save_exit:
     cmp     #$80 | '*'
     bne     :+
     jsr     inline_print
-    .byte   "Monitor",13,0
+    .byte   "Monitor",13,"(enter CTRL-Y to return)",13,0
+
+    jsr     inline_print
+    .byte   "Tilesheet address = $",0
+    ldx     #<TILESHEET
+    ldy     #>TILESHEET
+    jsr     PRINTXY
+    lda     #13
+    jsr     COUT
+
+    ; Set ctrl-y vector
+    lda     #$4c        ; JMP
+    sta     $3f8
+    lda     #<main
+    sta     $3f9
+    lda     #>main
+    sta     $3fa
+
     bit     TXTSET
     jmp     MONZ        ; enter monitor
+:
 
     ;------------------
     ; ? = HELP
@@ -2873,7 +2891,7 @@ temp:       .byte   0
     ; set filename
     clc
     adc     #'0'
-    sta     pathname+8
+    sta     pathname_end-1
 
     lda     #13
     jsr     COUT
@@ -2929,9 +2947,6 @@ open_params:
     .word   FILEBUFFER
     .byte   $0                  ; reference number
 
-pathname:
-    .byte   8,"TILESET0"
-
 read_params:
     .byte   $4
     .byte   $0                  ; reference number
@@ -2945,6 +2960,13 @@ close_params:
 
 .endproc
 
+; Use a common pathname for load and store
+
+pathname:
+    .byte   14,"/DHGR/TILESET0"
+pathname_end:
+
+
 ;-----------------------------------------------------------------------------
 ; Save sheet
 ;
@@ -2955,7 +2977,7 @@ close_params:
     ; set filename
     clc
     adc     #'0'
-    sta     pathname+8
+    sta     pathname_end-1
 
     lda     #13
     jsr     COUT
@@ -3032,9 +3054,6 @@ open_params:
     .word   pathname      
     .word   FILEBUFFER
     .byte   $0                  ; reference number
-
-pathname:
-    .byte   8,"TILESET0"
 
 create_params:
     .byte   $7

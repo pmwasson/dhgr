@@ -32,8 +32,10 @@ java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset1 bin < tileset1.
 
 :: Throw on basic and other games for fun
 java -jar C:\jar\AppleCommander.jar -p dhgr_prodos.dsk basic.system sys < ..\disk\BASIC.SYSTEM 
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk askey bin < ..\disk\askey.apple2 
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk aa bin < ..\disk\aa.apple2 
+
+:: Got disk full, so removing other games
+::java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk askey bin < ..\disk\askey.apple2 
+::java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk aa bin < ..\disk\aa.apple2 
 
 :: Copy results out of the build directory
 copy dhgr_prodos.dsk ..\disk
