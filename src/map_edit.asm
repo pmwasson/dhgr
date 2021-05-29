@@ -5,6 +5,15 @@
 ;
 
 
+MAP_CURSOR          =   MAX_TILES
+MAP_X_OFFSET        =   10
+MAP_Y_OFFSET        =   2
+MAP_SCREEN_WIDTH    =   7
+MAP_SCREEN_HEIGHT   =   7
+
+MAP_WIDTH           =   64
+MAP_HEIGHT          =   64
+
 ;------------------------------------------------
 ; Global scope (for map edit)
 ;------------------------------------------------
@@ -65,7 +74,7 @@ toggle_text_off:
     bne     :+
     jsr     inline_print
     .byte   "Select up 1",13,0
-    lda     #1
+    lda     #256-1
     jmp     finish_select
 :
 
@@ -76,7 +85,7 @@ toggle_text_off:
     bne     :+
     jsr     inline_print
     .byte   "Select up 5",13,0
-    lda     #5
+    lda     #256-5
     jmp     finish_select
 :
 
@@ -87,7 +96,7 @@ toggle_text_off:
     bne     :+
     jsr     inline_print
     .byte   "Select down 1",13,0
-    lda     #256-1
+    lda     #1
     jmp     finish_select
 :
 
@@ -98,7 +107,7 @@ toggle_text_off:
     bne     :+
     jsr     inline_print
     .byte   "Select down 5",13,0
-    lda     #256-5
+    lda     #5
     jmp     finish_select
 :
 
@@ -109,14 +118,17 @@ toggle_text_off:
     bne     :+
     jsr     inline_print
     .byte   "Right ",0
+    lda     curX
+    cmp     #MAP_SCREEN_WIDTH-1
+    beq     pan_right
     inc     curX
-    lda     width
-    cmp     curX
-    bne     right_good
-    lda     #0
-    sta     curX
-right_good:
     jmp     finish_move
+pan_right:
+    lda     mapX
+    cmp     #MAP_WIDTH-MAP_SCREEN_WIDTH
+    beq     move_fail
+    inc     mapX
+    jmp     finish_pan
 :
 
     ;------------------
@@ -126,15 +138,19 @@ right_good:
     bne     :+
     jsr     inline_print
     .byte   "Left  ",0
-    dec     curX
     lda     curX
-    bpl     left_good
-    lda     width_m1
-    sta     curX
-left_good:
+    beq     pan_left
+    dec     curX
+    jmp     finish_move
+pan_left:
+    lda     mapX
+    beq     move_fail
+    dec     mapX
+    jmp     finish_pan
+move_fail:
+    jsr     sound_click
     jmp     finish_move
 :
-
     ;------------------
     ; UP (arrow)
     ;------------------
@@ -142,13 +158,15 @@ left_good:
     bne     :+
     jsr     inline_print
     .byte   "Up    ",0
-    dec     curY
     lda     curY
-    bpl     up_good
-    lda     height_m1
-    sta     curY
-up_good:
+    beq     pan_up
+    dec     curY
     jmp     finish_move
+pan_up:
+    lda     mapY
+    beq     move_fail
+    dec     mapY
+    jmp     finish_pan
 :
     ;------------------
     ; DOWN (arrow)
@@ -157,14 +175,17 @@ up_good:
     bne     :+
     jsr     inline_print
     .byte   "Down  ",0
+    lda     curY
+    cmp     #MAP_SCREEN_HEIGHT-1
+    beq     pan_down
     inc     curY
-    lda     height
-    cmp     curY
-    bne     down_good
-    lda     #0
-    sta     curY
-down_good:
     jmp     finish_move
+pan_down:
+    lda     mapY
+    cmp     #MAP_HEIGHT-MAP_SCREEN_HEIGHT
+    beq     move_fail
+    inc     mapY
+    jmp     finish_pan
 :
 
     ;------------------
@@ -176,34 +197,6 @@ down_good:
     .byte   "Quit",13,0
     bit     TXTSET
     jmp     quit
-:
-
-    ;------------------
-    ; * = Monitor
-    ;------------------
-    cmp     #$80 | '*'
-    bne     :+
-    jsr     inline_print
-    .byte   "Monitor",13,"(enter CTRL-Y to return)",13,0
-
-    jsr     inline_print
-    .byte   "Tilesheet address = $",0
-    ldx     #<TILESHEET
-    ldy     #>TILESHEET
-    jsr     PRINTXY
-    lda     #13
-    jsr     COUT
-
-    ; Set ctrl-y vector
-    lda     #$4c        ; JMP
-    sta     $3f8
-    lda     #<main
-    sta     $3f9
-    lda     #>main
-    sta     $3fa
-
-    bit     TXTSET
-    jmp     MONZ        ; enter monitor
 :
 
     ;------------------
@@ -229,11 +222,102 @@ down_good:
 :
 
     ;------------------
+    ; \ = Monitor
+    ;------------------
+    cmp     #$80 | '\'
+    bne     :+
+    jsr     inline_print
+    .byte   "Monitor",13,"(enter CTRL-Y to return)",13,0
+
+    jsr     inline_print
+    .byte   "Tilesheet address = $",0
+    ldx     #<TILESHEET
+    ldy     #>TILESHEET
+    jsr     PRINTXY
+    lda     #13
+    jsr     COUT
+
+    ; Set ctrl-y vector
+    lda     #$4c        ; JMP
+    sta     $3f8
+    lda     #<main
+    sta     $3f9
+    lda     #>main
+    sta     $3fa
+
+    bit     TXTSET
+    jmp     MONZ        ; enter monitor
+:
+
+    ;------------------
+    ; Set quick bar
+    ; !@#$%^&*()
+    ;------------------
+    cmp     #$80 | '!'
+    bne     :+
+    ldx     #0
+    jmp     set_key
+:
+    cmp     #$80 | '@'
+    bne     :+
+    ldx     #1
+    jmp     set_key
+:
+    cmp     #$80 | '#'
+    bne     :+
+    ldx     #2
+    jmp     set_key
+:
+    cmp     #$80 | '$'
+    bne     :+
+    ldx     #3
+    jmp     set_key
+:
+    cmp     #$80 | '%'
+    bne     :+
+    ldx     #4
+    jmp     set_key
+:
+    cmp     #$80 | '^'
+    bne     :+
+    ldx     #5
+    jmp     set_key
+:
+    cmp     #$80 | '&'
+    bne     :+
+    ldx     #6
+    jmp     set_key
+:
+    cmp     #$80 | '*'
+    bne     :+
+    ldx     #7
+    jmp     set_key
+:
+    cmp     #$80 | '('
+    bne     :+
+    ldx     #8
+    jmp     set_key
+:
+    cmp     #$80 | ')'
+    bne     :+
+    ldx     #9
+    jmp     set_key
+:
+
+    ;------------------
     ; Unknown
     ;------------------
     jsr     inline_print
     .byte   "Unknown command (? for help)",13,0
     jmp     command_loop
+
+; jump to to change key
+set_key:
+    lda     selectIndex
+    sta     quickBar,x
+    jsr     drawQuickBar
+    jmp     command_loop
+
 
 ; jump to after changing select
 ; amount to move select in A
@@ -245,24 +329,46 @@ finish_select:
     jsr     drawSelectBar
     jmp     command_loop
 
+finish_pan:
+    jsr     update_world
+    jsr     drawMap
+    jmp     finish_move2
+
 ; jump to after changing coordinates
 finish_move:
+    ; update world coordinates
+    jsr     update_world
+
+finish_move2:    
     jsr     inline_print
     .byte   "X/Y:",0
-    lda     curX
+
+    ; calc cursor position as part of print
+    lda     worldX
     jsr     PRBYTE
     lda     #$80 + ','
     jsr     COUT
-    lda     curY
+    lda     worldY
     jsr     PRBYTE
     jsr     inline_print
     .byte   " Tile:",0
-    ;jsr     getTile
-    lda     #0
+    jsr     getTile
+    sta     cursorTile
     jsr     PRBYTE
     lda     #13
     jsr     COUT
     jmp     command_loop
+
+update_world:
+    lda     mapX
+    clc
+    adc     curX
+    sta     worldX
+    lda     mapY
+    clc
+    adc     curY
+    sta     worldY
+    rts
 
 .endproc
 
@@ -343,9 +449,12 @@ max_digit:  .byte   0
     bit     TXTSET
     jsr     inline_print
     .byte   "  Arrows:  Move cursor",13
+    .byte   "  0..9:       Set location of cursor to selected tile",13
+    .byte   "  0..9:       Set location of cursor to quick-bar tile",13
+    .byte   "  Shift+0..9: Assign quick-bar to selected tile",13
     .byte   "  Tab:     Switch tool",13
     .byte   "  ?:       This help screen",13
-    .byte   "  *:       Monitor",13
+    .byte   "  \:       Monitor",13
     .byte   "  Ctrl-Q:  Quit",13
     .byte   "  Escape:  Toggle text/graphics",13
     .byte   0
@@ -361,9 +470,11 @@ max_digit:  .byte   0
 
 .proc drawScreen
 
+    ;----------------
+    ; Static content
+    ;----------------
     ; Map box
-
-    lda     #0
+    lda     #1
     sta     boxTop
     lda     #16
     sta     boxBottom
@@ -373,13 +484,51 @@ max_digit:  .byte   0
     sta     boxRight
     jsr     drawBox
 
-    jsr     drawSelectBar
+    ; Select outline
+    jsr     drawSelectBox
 
+    ;----------------
+    ; Dynamic content
+    ;----------------
+    jsr     drawSelectBar
     jsr     drawQuickBar
+    jsr     drawMap
 
     rts
 .endproc
 
+.proc drawSelectBox
+    lda     #4
+    sta     index
+
+    lda     #BOX_RIGHT_TEE
+    sta     shape
+
+loop:
+    lda     index
+    asl     ;*2
+    sta     tileX
+    lda     #5
+    sta     tileY
+    lda     shape
+    jsr     drawInterfaceTile_7x8
+    lda     #8
+    sta     tileY
+    lda     shape
+    jsr     drawInterfaceTile_7x8
+
+    lda     #BOX_HORZ
+    sta     shape
+
+    dec     index
+    bpl     loop
+
+    rts
+
+index:      .byte   0
+shape:      .byte   0
+
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; Draw Select Bar
@@ -390,7 +539,6 @@ max_digit:  .byte   0
     lda     selectOffset
     sta     index
 
-
     lda     #0
     sta     tileX
     lda     #0
@@ -400,6 +548,7 @@ max_digit:  .byte   0
     jsr     drawNumberedTile
     jsr     incIndex
 
+    sta     selectIndex
     jsr     drawSelectedTile
     jsr     incIndex
 
@@ -510,6 +659,78 @@ index:      .byte   0
 
 
 ;-----------------------------------------------------------------------------
+; Draw Map
+;
+;-----------------------------------------------------------------------------
+
+.proc drawMap
+
+    lda     #0
+    sta     indexY
+
+loop_y:
+
+    ; set pointer
+    lda     mapY
+    clc
+    adc     indexY
+    sta     temp
+    lsr
+    lsr     ; /4
+    adc     #>MAPSHEET
+    sta     mapPtr1
+
+    lda     temp
+    asl
+    asl
+    asl
+    asl
+    asl
+    asl
+    sta     mapPtr0     ; assume 256 aligned
+
+    lda     #0
+    sta     indexX
+
+    lda     indexY
+    asl
+    adc     #MAP_Y_OFFSET
+    sta     tileY
+
+loop_x:
+
+    lda     indexX
+    asl
+    asl     ;*4
+    adc     #MAP_X_OFFSET
+    sta     tileX
+
+    lda     worldX
+    clc
+    adc     indexX
+    tay
+    lda     (mapPtr0),y
+    jsr     drawTile_14x16
+
+    inc     indexX
+    lda     indexX
+    cmp     #MAP_SCREEN_WIDTH   
+    bne     loop_x
+
+    inc     indexY
+    lda     indexY
+    cmp     #MAP_SCREEN_HEIGHT
+    bne     loop_y
+
+    rts
+
+temp:       .byte   0
+indexX:     .byte   0
+indexY:     .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
 ; Save cursor
 ;   Swap between current and backup cursor coordinates
 ;-----------------------------------------------------------------------------
@@ -539,6 +760,19 @@ saveCurY:   .byte   0
 ;-----------------------------------------------------------------------------
 .proc getInput
 
+    ; calc tile cordinates once
+
+    lda     curX
+    asl
+    asl     ;*4
+    adc     #MAP_X_OFFSET
+    sta     tileX
+
+    lda     curY
+    asl
+    adc     #MAP_Y_OFFSET
+    sta     tileY
+
 cursor_loop:
     ; Strobe keyboard
     bit     KBDSTRB 
@@ -547,7 +781,8 @@ cursor_loop:
     lda     #$FF
     jsr     COUT
 
-
+    lda     #MAP_CURSOR
+    jsr     drawTile_14x16
 
     ; Wait (on)
     jsr     wait
@@ -559,6 +794,10 @@ cursor_loop:
     jsr     COUT
     lda     #$88        ; backspace
     jsr     COUT
+
+
+    lda     cursorTile
+    jsr     drawTile_14x16
 
 
     ; check for keypress
@@ -597,20 +836,60 @@ waitExit:
 
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; getTile
+;   Return tile byte at world coordinates
+;-----------------------------------------------------------------------------
+
+.proc getTile
+
+    lda     worldY
+    lsr
+    lsr     ; /4
+    adc     #>MAPSHEET
+    sta     mapPtr1
+
+    lda     worldY
+    asl
+    asl
+    asl
+    asl
+    asl
+    asl
+    sta     mapPtr0     ; assume 256 aligned
+
+    ldy     worldX
+    lda     (mapPtr0),y
+
+    rts
+
+.endproc
+
 ;-----------------------------------------------------------------------------
 ; Global Variables
 ;-----------------------------------------------------------------------------
 
+; map = world offset
+mapX:               .byte   0
+mapY:               .byte   0
+
+; cur = offset on screen
 curX:               .byte   0
 curY:               .byte   0
+cursorTile:         .byte   0
+
+; word = map + cur
+worldX:             .byte   0
+worldY:             .byte   0
 
 selectOffset:       .byte   0
 selectIndex:        .byte   0
 
-height:             .byte   32
-height_m1:          .byte   31
-width:              .byte   32
-width_m1:           .byte   31
+height:             .byte   64
+height_m1:          .byte   63
+width:              .byte   64
+width_m1:           .byte   63
 
 ; Saved indexes
 quickBar:           .byte   0,1,2,3,4,5,6,7,8,9

@@ -30,10 +30,15 @@
 ;
 ; Reserve $FE/$FF for inline print
 
+; DHGR
 tilePtr0        :=  $06     ; Tile pointer
 tilePtr1        :=  $07
 screenPtr0      :=  $08     ; Screen pointer
 screenPtr1      :=  $09
+
+; Map
+mapPtr0         :=  $EC
+mapPtr1         :=  $ED
 
 ; memory map
 FILEBUFFER      =   $800        ; PRODOS filebuffer
@@ -49,8 +54,9 @@ BOX_UPPER_LEFT  = 50
 BOX_UPPER_RIGHT = 51
 BOX_LOWER_LEFT  = 52
 BOX_LOWER_RIGHT = 53
-BOX_TILE        = 54 ; &55
-BOX_ARROW       = 56 ; &57
+BOX_RIGHT_TEE   = 54
+BOX_TILE        = 55 ; +1
+BOX_ARROW       = 57 ; +1
 
 ;------------------------------------------------
 
@@ -749,6 +755,7 @@ quit_params:
 ; Utilies
 
 .include "inline_print.asm"
+.include "sounds.asm"
 
 ; Global Variables
 ;-----------------------------------------------------------------------------
@@ -1064,6 +1071,10 @@ interface_7x8:
     .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$2A,$00,$55,$01,$2A,$00           
     .byte $55,$00,$0A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00           
 
+    ; Right Tee -|
+    .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$20,$00,$55,$01,$2A,$00           
+    .byte $55,$01,$2A,$00,$00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$20,$00           
+
     ;; "TI" - White
     ;.byte $00,$00,$00,$00,$00,$00,$00,$00,$7F,$3C,$1F,$78,$70,$3C,$01,$78           
     ;.byte $70,$3C,$01,$78,$70,$3C,$01,$78,$70,$3C,$01,$78,$00,$00,$00,$00           
@@ -1104,6 +1115,27 @@ TILESHEET:
 
 ; End of tilesheet
 TILESHEET_END:
+
+; Include a "cursor" tile for map edit after the user tiles
+    ; 14x16 Cursor
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$14,$50,$41,$0A,$28,$20,$02           
+    .byte $50,$41,$05,$14,$20,$02,$0A,$00,$00,$14,$50,$41,$0A,$28,$20,$02           
+    .byte $50,$41,$05,$14,$20,$02,$0A,$00,$00,$14,$50,$41,$0A,$28,$20,$02           
+    .byte $50,$41,$05,$14,$20,$02,$0A,$00,$00,$14,$50,$41,$0A,$28,$20,$02           
+    .byte $50,$41,$05,$14,$20,$02,$0A,$00,$00,$14,$50,$41,$0A,$28,$20,$02           
+    .byte $50,$41,$05,$14,$20,$02,$0A,$00,$00,$14,$50,$41,$0A,$28,$20,$02           
+    .byte $50,$41,$05,$14,$20,$02,$0A,$00,$00,$14,$50,$41,$0A,$28,$20,$02           
+    .byte $50,$41,$05,$14,$20,$02,$0A,$00,$00,$00,$00,$00,$00,$00,$00,$00           
+
+
+.align 256
+
+MAPSHEET_SIZE = MAPSHEET_END - MAPSHEET
+
+MAPSHEET:
+.include "map_64x64.asm"
+MAPSHEET_END:
+
     .dword  .time   ; Time of compilation
 
 ;--------------------------------------------------------------------------

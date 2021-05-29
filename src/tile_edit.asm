@@ -5,25 +5,6 @@
 ;
 
 ;------------------------------------------------
-; Zero page usage
-;------------------------------------------------
-
-; Safe zero page locations from Inside the Apple IIe:
-;
-;                         $06 $07 
-; $08 $09
-;     $19 $1A $1B $1C $1D $1E
-;                         $CE $CF
-;                             $D7
-;             $E3
-; $E8 
-;                 $EC $ED $EE $EF
-;         $FA $FB $FC $FD $FE $FF 
-;
-; Reserve $FE/$FF for inline print
-
-
-;------------------------------------------------
 ; Global scope (for tile edit)
 ;------------------------------------------------
 .proc tile_edit
@@ -477,9 +458,9 @@ save_exit:
 :
 
     ;------------------
-    ; * = Monitor
+    ; \ = Monitor
     ;------------------
-    cmp     #$80 | '*'
+    cmp     #$80 | '\'
     bne     :+
     jsr     inline_print
     .byte   "Monitor",13,"(enter CTRL-Y to return)",13,0
@@ -902,7 +883,7 @@ max_digit:  .byte   0
     .byte   "  !:       Dump bytes",13
     .byte   "  Tab:     Switch tool",13
     .byte   "  ?:       This help screen",13
-    .byte   "  *:       Monitor",13
+    .byte   "  \:       Monitor",13
     .byte   "  Ctrl-Q:  Quit",13
     .byte   "  Escape:  Toggle text/graphics",13
     .byte   0
