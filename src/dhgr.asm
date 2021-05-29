@@ -489,13 +489,23 @@ save_exit:
     ;------------------
     ; Q = QUIT
     ;------------------
-    cmp     #$80 | 'Q'
+    cmp     #KEY_CTRL_Q
     bne     :+
     jsr     inline_print
     .byte   "Quit",13,0
     bit     TXTSET
-    jmp     MONZ        ; enter monitor
+    jmp     quit
 :
+
+    ;------------------
+    ; * = Monitor
+    ;------------------
+    cmp     #$80 | '*'
+    bne     :+
+    jsr     inline_print
+    .byte   "Monitor",13,0
+    bit     TXTSET
+    jmp     MONZ        ; enter monitor
 
     ;------------------
     ; ? = HELP
@@ -896,7 +906,8 @@ max_digit:  .byte   0
     .byte   "  !:       Dump bytes",13
     .byte   "  Ctrl-I:  Program information",13
     .byte   "  ?:       This help screen",13
-    .byte   "  Q:       Quit",13  
+    .byte   "  Ctrl-Q:  Quit",13
+    .byte   "  *:       Monitor"  
     .byte   "  Escape:  Toggle text/graphics",13
     .byte   0
 
@@ -3045,6 +3056,26 @@ write_params:
 close_params:
     .byte   $1
     .byte   $0                  ; reference number
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Quit
+;
+;   Exit to ProDos
+;-----------------------------------------------------------------------------
+.proc quit
+
+    jsr     MLI
+    .byte   CMD_QUIT
+    .word  quit_params
+
+quit_params:
+    .byte   4               ; 4 parameters
+    .byte   0               ; 0 is the only quit type
+    .word   0               ; Reserved pointer for future use (what future?)
+    .byte   0               ; Reserved byte for future use (what future?)
+    .word   0               ; Reserved pointer for future use (what future?)
 
 .endproc
 
