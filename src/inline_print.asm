@@ -41,6 +41,8 @@ printLoop:
 
 printExit:
     sta     CLR80COL    ; COUT sets 80COL
+
+    
     pla                 ; clean up stack
     ; calculate return address after print string
     clc
