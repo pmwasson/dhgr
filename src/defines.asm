@@ -72,10 +72,14 @@ KEY_CTRL_Q 		= $91
 KEY_CTRL_R 		= $92
 KEY_CTRL_S 		= $93
 KEY_CTRL_T 		= $94
-KEY_CTRL_V 		= $96
 KEY_RIGHT       = $95 		; CTRL_U
+KEY_CTRL_V 		= $96
+KEY_CTRL_Z 		= $9A
 KEY_ESC         = $9B
 KEY_SPACE       = $A0
+KEY_A           = $C1
+KEY_Z           = $DA
+
 
 ; Directions
 DIR_LEFT        =   0

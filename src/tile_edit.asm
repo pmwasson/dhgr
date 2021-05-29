@@ -1532,26 +1532,8 @@ loopx:
     sta     tileY
     lda     #34
     sta     tileX
-    lda     #BOX_TILE
-    jsr     drawInterfaceTile_7x8
-
-    inc     tileY
     lda     tileIndex
-    lsr     
-    lsr     
-    lsr     
-    lsr     
-    jsr     drawInterfaceTile_7x8
-
-    inc     tileX
-    inc     tileX
-    lda     tileIndex
-    and     #$f
-    jsr     drawInterfaceTile_7x8
-
-    dec     tileY
-    lda     #BOX_TILE+1
-    jsr     drawInterfaceTile_7x8
+    jsr     drawTileNumber
 
     rts
 

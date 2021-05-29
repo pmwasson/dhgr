@@ -50,6 +50,7 @@ BOX_UPPER_RIGHT = 51
 BOX_LOWER_LEFT  = 52
 BOX_LOWER_RIGHT = 53
 BOX_TILE        = 54 ; &55
+BOX_ARROW       = 56 ; &57
 
 ;------------------------------------------------
 
@@ -70,6 +71,8 @@ BOX_TILE        = 54 ; &55
 
 .include "tile_edit.asm"
 
+.include "map_edit.asm"
+
 ;=============================================================================
 ; Toolbox program
 ;=============================================================================
@@ -84,7 +87,7 @@ BOX_TILE        = 54 ; &55
 .proc titleLoop
 
     jsr     tile_edit::init     ; Init tile editor
-    ;jsr     map_edit::init      ; Init map editor
+    jsr     map_edit::init      ; Init map editor
 
     jsr     $c300       ; 80 column mode
     jsr     HOME        ; clear screen
@@ -95,10 +98,11 @@ BOX_TILE        = 54 ; &55
     jsr     dhgrInit    ; Turn on dhgr
 
 loop:
+    jsr     map_edit::main
+
     jsr     clearScreen
     jsr     displayTitle
-    jsr     tile_edit::main     ; Run tool
-    ;jsr     map_edit::main
+    jsr     tile_edit::main
     jmp     loop
 
 .endproc
@@ -127,8 +131,8 @@ loop:
 
     jsr     drawString
     .byte "  DHGR TOOLBOX:",13,13
-    .byte "  ] TILE EDITOR",13
-    .byte "  ] MAP EDITOR",13,13
+    .byte " ] TILE EDITOR [",13
+    .byte " ] MAP EDITOR  [",13,13
     .byte "  BY PAUL WASSON",13
     .byte "  JUNE 2021",13,13
     .byte "PRESS TAB TO BEGIN",0
@@ -292,6 +296,68 @@ printExit:
 
 char:   .byte   0
 offset: .byte   0
+.endproc
+
+;-----------------------------------------------------------------------------
+; Draaw Tile Number
+;
+;   Draw 14x16 tile index with number passed in A
+;-----------------------------------------------------------------------------
+
+.proc drawTileNumber
+    sta     tileIndex
+
+    lda     #BOX_TILE
+    jsr     drawInterfaceTile_7x8
+
+    inc     tileY
+    lda     tileIndex
+    lsr     
+    lsr     
+    lsr     
+    lsr     
+    jsr     drawInterfaceTile_7x8
+
+    inc     tileX
+    inc     tileX
+    lda     tileIndex
+    and     #$f
+    jsr     drawInterfaceTile_7x8
+
+    dec     tileY
+    lda     #BOX_TILE+1
+    jsr     drawInterfaceTile_7x8
+
+    rts
+
+.endproc
+
+.proc drawTileNumberSelected
+    sta     tileIndex
+
+    lda     #BOX_ARROW
+    jsr     drawInterfaceTile_7x8
+
+    inc     tileY
+    lda     tileIndex
+    lsr     
+    lsr     
+    lsr     
+    lsr     
+    jsr     drawInterfaceTile_7x8
+
+    inc     tileX
+    inc     tileX
+    lda     tileIndex
+    and     #$f
+    jsr     drawInterfaceTile_7x8
+
+    dec     tileY
+    lda     #BOX_ARROW+1
+    jsr     drawInterfaceTile_7x8
+
+    rts
+
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -998,13 +1064,29 @@ interface_7x8:
     .byte $00,$01,$20,$00,$00,$01,$20,$00,$00,$01,$2A,$00,$55,$01,$2A,$00           
     .byte $55,$00,$0A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00           
 
-    ; "TI"
-    .byte $7F,$70,$1F,$1F,$70,$40,$01,$07,$70,$40,$01,$07,$70,$40,$01,$07           
-    .byte $70,$40,$01,$07,$70,$40,$01,$07,$70,$70,$01,$1F,$00,$00,$00,$00           
+    ;; "TI" - White
+    ;.byte $00,$00,$00,$00,$00,$00,$00,$00,$7F,$3C,$1F,$78,$70,$3C,$01,$78           
+    ;.byte $70,$3C,$01,$78,$70,$3C,$01,$78,$70,$3C,$01,$78,$00,$00,$00,$00           
+    ;
+    ;; "LE" - White
+    ;.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$7F,$60,$07,$00,$03,$60,$00           
+    ;.byte $00,$3F,$60,$00,$00,$03,$60,$00,$7F,$7F,$61,$07,$00,$00,$00,$00           
 
-    ; "LE"
-    .byte $3C,$7C,$00,$7F,$3C,$3C,$00,$00,$3C,$3C,$00,$00,$3C,$7C,$00,$07           
-    .byte $3C,$3C,$00,$00,$3C,$3C,$00,$00,$7C,$7C,$1F,$7F,$00,$00,$00,$00           
+    ; "TI" - Gray
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$2A,$28,$15,$50,$20,$28,$01,$50           
+    .byte $20,$28,$01,$50,$20,$28,$01,$50,$20,$28,$01,$50,$00,$00,$00,$00           
+
+    ; "LE" - Gray
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$2A,$40,$05,$00,$02,$40,$00           
+    .byte $00,$2A,$40,$00,$00,$02,$40,$00,$2A,$2A,$41,$05,$00,$00,$00,$00           
+
+    ; Arrow 0
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$60,$3B,$5D,$77           
+    .byte $20,$2A,$55,$55,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00           
+
+    ; Arrow 1
+    .byte $00,$00,$00,$00,$00,$03,$40,$00,$00,$3B,$40,$00,$6E,$3B,$5D,$07           
+    .byte $2A,$3B,$55,$05,$00,$2B,$40,$00,$00,$02,$40,$00,$00,$00,$00,$00           
 
 ;--------------------------------------------------------------------------
 ; Default tiles
