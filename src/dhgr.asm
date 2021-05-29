@@ -315,16 +315,22 @@ next_continue8:
     cmp     #KEY_CTRL_F
     bne     :+
     jsr     inline_print
-    .byte   "Set all pixels to ",0
-    lda     paintColor
-    and     #$f
-    jsr     PRBYTE
-    lda     #13
-    jsr     COUT
+
+
+    .byte   "Fill Color. Pick color (or cancel):",0
+    jsr     getInput
+    jsr     getInputColor
+    cmp     #$80
+    beq     fill_cancel
     jsr     fillPixels
     jsr     updateAll
     jmp     reset_loop
+fill_cancel:
+    jsr     inline_print
+    .byte   "Cancel",13,0
+    jmp     command_loop
 :
+
 
     ;------------------
     ; ^T = Toggle Size
@@ -908,7 +914,7 @@ max_digit:  .byte   0
     .byte   "  Arrows:  Move cursor",13
     .byte   "  0-9,A-F: Set paint color",13
     .byte   "  Space:   Paint pixel",13
-    .byte   "  Ctrl-F:  Fill tile with paint color (overwrites current tile)",13
+    .byte   "  Ctrl-F:  Fill tile with specified color (overwrites current tile)",13
     .byte   "  Ctrl-C:  Copy tile to clipboard",13
     .byte   "  Ctrl-V:  Paste tile from clipboard (overwrites current tile)",13
     .byte   "  Ctrl-A:  Add clipboard to current tile (black pixels ignored)",13
@@ -917,15 +923,14 @@ max_digit:  .byte   0
     .byte   "  Ctrl-R:  Rotate pixels in a direction specified by an arrow key",13
     .byte   "  Ctrl-T:  Toggle between 7x8 and 14x16 tile size",13
     .byte   "  Ctrl-B:  Toggle between color and binary mode",13
-    .byte   "  -,=:     Go to previous/next tile",13
-    .byte   "  _,+:     Go to previous/next 8 tiles",13
+    .byte   "  -,=:     Go to previous/next tile (holding shift moves 8 tile)",13
     .byte   "  Ctrl-L:  Load tile set",13
     .byte   "  Ctrl-S:  Save tile set",13
     .byte   "  !:       Dump bytes",13
     .byte   "  Ctrl-I:  Program information",13
     .byte   "  ?:       This help screen",13
+    .byte   "  *:       Monitor",13
     .byte   "  Ctrl-Q:  Quit",13
-    .byte   "  *:       Monitor"  
     .byte   "  Escape:  Toggle text/graphics",13
     .byte   0
 
@@ -1625,13 +1630,12 @@ loop:
 
 ;-----------------------------------------------------------------------------
 ; Fill pixels
-;   Set all pixel to paint color
+;   Set all pixel to A
 ;-----------------------------------------------------------------------------
 
 .proc fillPixels
 
     ldx     #0
-    lda     paintColor
 :
     sta     pixelData,x
     inx
