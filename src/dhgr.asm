@@ -336,6 +336,8 @@ offset: .byte   0
 
     rts
 
+tileIndex:  .byte   0
+
 .endproc
 
 .proc drawTileNumberSelected
@@ -363,6 +365,8 @@ offset: .byte   0
     jsr     drawInterfaceTile_7x8
 
     rts
+
+tileIndex:  .byte   0
 
 .endproc
 
@@ -765,7 +769,6 @@ currentSheet_14x16: .word   tileSheet_14x16
 
 tileX:              .byte   0
 tileY:              .byte   0
-tileIndex:          .byte   0
 invMask:            .byte   0
 
 ; Box routine   

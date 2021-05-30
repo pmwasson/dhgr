@@ -77,6 +77,8 @@ KEY_CTRL_V 		= $96
 KEY_CTRL_Z 		= $9A
 KEY_ESC         = $9B
 KEY_SPACE       = $A0
+KEY_0 			= $B0
+KEY_9 			= $B9
 KEY_A           = $C1
 KEY_Z           = $DA
 

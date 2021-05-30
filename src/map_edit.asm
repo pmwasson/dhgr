@@ -112,6 +112,52 @@ toggle_text_off:
 :
 
     ;------------------
+    ; SP = Set tile
+    ;------------------
+    cmp     #KEY_SPACE
+    bne     :+
+    jsr     inline_print
+    .byte   "Set tile to ",0
+    lda     selectTile
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    lda     selectTile
+    jsr     setTile
+    jmp     command_loop
+:
+
+    ;------------------
+    ; 0..9
+    ; Quick bar set tile
+    ;------------------
+    ; if less than 0 or greater than 9, skip ahead
+    cmp     #KEY_0
+    bmi     :+
+    cmp     #KEY_9+1
+    bpl     :+
+    ; zero upper bits
+    and     #$f
+    bne     key_not_zero
+    lda     #10
+key_not_zero:
+    sec
+    sbc     #1
+    tax
+    lda     quickBar,x
+    sta     cursorTile      ; its going to get overwritten    
+    jsr     inline_print
+    .byte   "Set tile to ",0
+    lda     cursorTile
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT
+    lda     cursorTile
+    jsr     setTile
+    jmp     command_loop
+:
+
+    ;------------------
     ; RIGHT (arrow)
     ;------------------
     cmp     #KEY_RIGHT
@@ -313,7 +359,7 @@ pan_down:
 
 ; jump to to change key
 set_key:
-    lda     selectIndex
+    lda     selectTile
     sta     quickBar,x
     jsr     drawQuickBar
     jmp     command_loop
@@ -548,7 +594,7 @@ shape:      .byte   0
     jsr     drawNumberedTile
     jsr     incIndex
 
-    sta     selectIndex
+    sta     selectTile
     jsr     drawSelectedTile
     jsr     incIndex
 
@@ -677,6 +723,7 @@ loop_y:
     sta     temp
     lsr
     lsr     ; /4
+    clc
     adc     #>MAPSHEET
     sta     mapPtr1
 
@@ -705,7 +752,7 @@ loop_x:
     adc     #MAP_X_OFFSET
     sta     tileX
 
-    lda     worldX
+    lda     mapX
     clc
     adc     indexX
     tay
@@ -838,15 +885,16 @@ waitExit:
 
 
 ;-----------------------------------------------------------------------------
-; getTile
-;   Return tile byte at world coordinates
+; setWorldMapPtr
+;   Set map pointer based on world X,Y
 ;-----------------------------------------------------------------------------
 
-.proc getTile
+.proc setWorldMapPtr
 
     lda     worldY
     lsr
     lsr     ; /4
+    clc
     adc     #>MAPSHEET
     sta     mapPtr1
 
@@ -858,13 +906,42 @@ waitExit:
     asl
     asl
     sta     mapPtr0     ; assume 256 aligned
-
-    ldy     worldX
-    lda     (mapPtr0),y
-
     rts
 
 .endproc
+
+;-----------------------------------------------------------------------------
+; getTile
+;   Return tile byte at world coordinates
+;-----------------------------------------------------------------------------
+
+.proc getTile
+
+    jsr     setWorldMapPtr
+    ldy     worldX
+    lda     (mapPtr0),y
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; setTile
+;   Set map tile to A
+;-----------------------------------------------------------------------------
+
+.proc setTile
+    sta     temp
+    jsr     setWorldMapPtr
+    ldy     worldX
+    lda     temp
+    sta     (mapPtr0),y
+    sta     cursorTile      ; update cursor
+    rts
+
+temp:   .byte   0
+
+.endproc
+
 
 ;-----------------------------------------------------------------------------
 ; Global Variables
@@ -876,7 +953,7 @@ mapY:               .byte   0
 
 ; cur = offset on screen
 curX:               .byte   0
-curY:               .byte   0
+curY:               .byte   1
 cursorTile:         .byte   0
 
 ; word = map + cur
@@ -884,7 +961,7 @@ worldX:             .byte   0
 worldY:             .byte   0
 
 selectOffset:       .byte   0
-selectIndex:        .byte   0
+selectTile:         .byte   0
 
 height:             .byte   64
 height_m1:          .byte   63

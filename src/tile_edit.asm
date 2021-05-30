@@ -2559,6 +2559,7 @@ close_params:
 color:              .byte   0
 curX:               .byte   0
 curY:               .byte   0
+tileIndex:          .byte   0
 
 paintColor:         .byte   $FF
 colorMode:          .byte   $10     ; $10 = color, $20 = B&W
