@@ -23,7 +23,9 @@ MAP_HEIGHT          =   64
 ; Only called once
 .proc init
 
-    ; FIXME
+    jsr     updateWorld
+    jsr     getTile
+    sta     cursorTile
 
     rts
 .endproc
@@ -235,7 +237,7 @@ pan_down:
 :
 
     ;------------------
-    ; Q = QUIT
+    ; ^Q = QUIT
     ;------------------
     cmp     #KEY_CTRL_Q
     bne     :+
@@ -376,14 +378,14 @@ finish_select:
     jmp     command_loop
 
 finish_pan:
-    jsr     update_world
+    jsr     updateWorld
     jsr     drawMap
     jmp     finish_move2
 
 ; jump to after changing coordinates
 finish_move:
     ; update world coordinates
-    jsr     update_world
+    jsr     updateWorld
 
 finish_move2:    
     jsr     inline_print
@@ -405,7 +407,13 @@ finish_move2:
     jsr     COUT
     jmp     command_loop
 
-update_world:
+.endproc
+
+;-----------------------------------------------------------------------------
+; Update world
+;   Set world coordinates
+;-----------------------------------------------------------------------------
+.proc updateWorld
     lda     mapX
     clc
     adc     curX
@@ -415,7 +423,6 @@ update_world:
     adc     curY
     sta     worldY
     rts
-
 .endproc
 
 ;-----------------------------------------------------------------------------
@@ -495,14 +502,16 @@ max_digit:  .byte   0
     bit     TXTSET
     jsr     inline_print
     .byte   "  Arrows:  Move cursor",13
-    .byte   "  0..9:       Set location of cursor to selected tile",13
+    .byte   "  Space:      Set location of cursor to selected tile",13
     .byte   "  0..9:       Set location of cursor to quick-bar tile",13
-    .byte   "  Shift+0..9: Assign quick-bar to selected tile",13
-    .byte   "  Tab:     Switch tool",13
-    .byte   "  ?:       This help screen",13
-    .byte   "  \:       Monitor",13
-    .byte   "  Ctrl-Q:  Quit",13
-    .byte   "  Escape:  Toggle text/graphics",13
+    .byte   "  Shift-0..9: Assign quick-bar to selected tile",13
+    .byte   "  A,Z:        Scroll tile selection by 1",13
+    .byte   "  Ctrl-A,Z:   Scroll tile selection by 5",13
+    .byte   "  Tab:        Switch tool",13
+    .byte   "  ?:          This help screen",13
+    .byte   "  \:          Monitor",13
+    .byte   "  Ctrl-Q:     Quit",13
+    .byte   "  Escape:     Toggle text/graphics",13
     .byte   0
 
     rts
@@ -821,9 +830,6 @@ saveCurY:   .byte   0
     sta     tileY
 
 cursor_loop:
-    ; Strobe keyboard
-    bit     KBDSTRB 
-
     ; Display cursor
     lda     #$FF
     jsr     COUT
@@ -842,17 +848,12 @@ cursor_loop:
     lda     #$88        ; backspace
     jsr     COUT
 
-
     lda     cursorTile
     jsr     drawTile_14x16
-
 
     ; check for keypress
     lda     KBD 
     bmi     exit
-
-    ; Strobe keyboard
-    bit     KBDSTRB 
 
     ; Wait (off)
     jsr     wait
@@ -952,8 +953,8 @@ mapX:               .byte   0
 mapY:               .byte   0
 
 ; cur = offset on screen
-curX:               .byte   0
-curY:               .byte   1
+curX:               .byte   3       ; start in middle of the screen
+curY:               .byte   3
 cursorTile:         .byte   0
 
 ; word = map + cur

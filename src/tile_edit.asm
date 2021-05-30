@@ -1708,9 +1708,6 @@ saveCurY:   .byte   0
 .proc getInput
 
 cursor_loop:
-    ; Strobe keyboard
-    bit     KBDSTRB 
-
     ; Display cursor
     lda     #$FF
     jsr     COUT
@@ -1735,9 +1732,6 @@ cursor_loop:
     ; check for keypress
     lda     KBD 
     bmi     exit
-
-    ; Strobe keyboard
-    bit     KBDSTRB 
 
     ; Wait (off)
     jsr     wait
