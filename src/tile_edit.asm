@@ -365,7 +365,7 @@ set_color_mode:
 
 rotate_done:
     jsr     updateAll
-    jsr     reset_loop
+    jmp     reset_loop
 
 rotate_cancel:
     jmp     command_loop
@@ -408,7 +408,7 @@ mirror_after:
     jsr     loadSheet
 
     ; redraw the screen
-    jsr     reset_loop
+    jmp     reset_loop
 
 load_exit:
     jmp     command_loop

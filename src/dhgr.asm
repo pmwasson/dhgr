@@ -103,12 +103,12 @@ BOX_ARROW       = 57 ; +1
 
     jsr     dhgrInit    ; Turn on dhgr
 
-loop:
-    jsr     map_edit::main
-
     jsr     clearScreen
     jsr     displayTitle
+
+loop:
     jsr     tile_edit::main
+    jsr     map_edit::main
     jmp     loop
 
 .endproc
@@ -1105,6 +1105,8 @@ interface_7x8:
 ;--------------------------------------------------------------------------
 ; Default tiles
 ;--------------------------------------------------------------------------
+
+.align 256
 
 ; Calculate size of tilesheets
 TILESHEET_SIZE = TILESHEET_END - TILESHEET
