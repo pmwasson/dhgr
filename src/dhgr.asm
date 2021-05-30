@@ -107,8 +107,8 @@ BOX_ARROW       = 57 ; +1
     jsr     displayTitle
 
 loop:
-    jsr     tile_edit::main
     jsr     map_edit::main
+    jsr     tile_edit::main
     jmp     loop
 
 .endproc
