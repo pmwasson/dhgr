@@ -237,6 +237,18 @@ pan_down:
 :
 
     ;------------------
+    ; ^P = Printer dump
+    ;------------------
+    cmp     #KEY_CTRL_P
+    bne     :+
+    bit     TXTSET
+    jsr     inline_print
+    .byte   "Dump Map to printer ",13,13,0
+    jsr     printerDump
+    jmp     command_loop
+:
+
+    ;------------------
     ; ^Q = QUIT
     ;------------------
     cmp     #KEY_CTRL_Q
@@ -507,6 +519,8 @@ max_digit:  .byte   0
     .byte   "  Shift-0..9: Assign quick-bar to selected tile",13
     .byte   "  A,Z:        Scroll tile selection by 1",13
     .byte   "  Ctrl-A,Z:   Scroll tile selection by 5",13
+    .byte   "  Ctrl-P:     Print map to output (printer)",13
+    .byte   "              (Do a 1^P in monitor first!)",13
     .byte   "  Tab:        Switch tool",13
     .byte   "  ?:          This help screen",13
     .byte   "  \:          Monitor",13
@@ -943,6 +957,86 @@ temp:   .byte   0
 
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; printerDump
+;
+;  Dump map to printer
+;-----------------------------------------------------------------------------
+.proc printerDump
+
+    bit     TXTSET
+
+    ;jsr     $c100       ; connect output to printer
+
+    lda     #0
+    sta     rowCount
+
+    ; set map ptr
+    sta     mapPtr0         ; zero
+    lda     #>MAPSHEET
+    sta     mapPtr1         ; page
+
+print_loop:
+    jsr     inline_print
+    .byte   ";row ",0
+    lda     rowCount
+    jsr     PRBYTE
+
+    jsr     printRow
+
+    lda     mapPtr0
+    clc
+    adc     #MAP_WIDTH
+    bne     :+
+    inc     mapPtr1
+:
+    inc     rowCount
+    lda     rowCount
+    cmp     #MAP_HEIGHT
+    bne     print_loop
+
+    ;jsr     $c300       ; recoonect output?
+
+    rts
+
+rowCount:   .byte   0
+
+printRow:
+    jsr     inline_print
+    .byte   13,".byte ",0
+
+    lda     #0
+    sta     dumpCount
+    jmp     dump_loop
+dump_comma:
+    lda     #$80 + ','
+    jsr     COUT
+dump_loop:
+    lda     #$80 + '$'
+    jsr     COUT
+    ldy     dumpCount
+    lda     (mapPtr0),y
+    jsr     PRBYTE
+    inc     dumpCount
+    lda     dumpCount
+    cmp     #MAP_WIDTH
+    beq     dump_finish
+    lda     dumpCount
+    and     #$f
+    bne     dump_comma
+    jsr     inline_print
+    .byte   13,".byte ",0
+    jmp     dump_loop
+
+dump_finish:
+    lda     #13
+    jsr     COUT
+    rts
+
+dumpCount: .byte   0
+
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; Global Variables

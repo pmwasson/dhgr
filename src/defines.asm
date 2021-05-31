@@ -68,6 +68,7 @@ KEY_UP          = $8B 		; CTRL_K
 KEY_CTRL_L 		= $8C
 KEY_RETURN      = $8D    	; CTRL_M
 KEY_CTRL_O 		= $8F
+KEY_CTRL_P 		= $90
 KEY_CTRL_Q 		= $91
 KEY_CTRL_R 		= $92
 KEY_CTRL_S 		= $93
