@@ -6,6 +6,12 @@ It supports 2 sizes of tiles 7x8 or 14x16 color pixels (where each color pixel =
 
 Pressing "?" will bring up a help screen with all the supported commands.
 
+## Intro
+
+See this video for a quick introduction.
+
+[![Alt text](https://img.youtube.com/vi/xzDUL8-6xek/0.jpg)](https://www.youtube.com/watch?v=xzDUL8-6xek)
+
 ## Download
 You can grab the latest disk image for PRODOS: https://github.com/pmwasson/dhgr/raw/main/disk/dhgr_prodos.dsk
 
