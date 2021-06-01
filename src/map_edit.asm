@@ -140,11 +140,6 @@ toggle_text_off:
     bpl     :+
     ; zero upper bits
     and     #$f
-    bne     key_not_zero
-    lda     #10
-key_not_zero:
-    sec
-    sbc     #1
     tax
     lda     quickBar,x
     sta     cursorTile      ; its going to get overwritten    
@@ -315,52 +310,52 @@ pan_down:
     ;------------------
     cmp     #$80 | '!'
     bne     :+
-    ldx     #0
+    ldx     #1
     jmp     set_key
 :
     cmp     #$80 | '@'
     bne     :+
-    ldx     #1
+    ldx     #2
     jmp     set_key
 :
     cmp     #$80 | '#'
     bne     :+
-    ldx     #2
+    ldx     #3
     jmp     set_key
 :
     cmp     #$80 | '$'
     bne     :+
-    ldx     #3
+    ldx     #4
     jmp     set_key
 :
     cmp     #$80 | '%'
     bne     :+
-    ldx     #4
+    ldx     #5
     jmp     set_key
 :
     cmp     #$80 | '^'
     bne     :+
-    ldx     #5
+    ldx     #6
     jmp     set_key
 :
     cmp     #$80 | '&'
     bne     :+
-    ldx     #6
+    ldx     #7
     jmp     set_key
 :
     cmp     #$80 | '*'
     bne     :+
-    ldx     #7
+    ldx     #8
     jmp     set_key
 :
     cmp     #$80 | '('
     bne     :+
-    ldx     #8
+    ldx     #9
     jmp     set_key
 :
     cmp     #$80 | ')'
     bne     :+
-    ldx     #9
+    ldx     #0
     jmp     set_key
 :
 
@@ -373,9 +368,20 @@ pan_down:
 
 ; jump to to change key
 set_key:
+    stx     quickbarIndex
     lda     selectTile
     sta     quickBar,x
     jsr     drawQuickBar
+    jsr     inline_print
+    .byte   "Quickbar set ",0
+    lda     quickbarIndex
+    jsr     PRBYTE
+    jsr     inline_print
+    .byte   " to tile ",0
+    lda     selectTile
+    jsr     PRBYTE
+    lda     #13
+    jsr     COUT    
     jmp     command_loop
 
 
@@ -418,6 +424,8 @@ finish_move2:
     lda     #13
     jsr     COUT
     jmp     command_loop
+
+quickbarIndex:  .byte   0
 
 .endproc
 
@@ -698,6 +706,11 @@ loop:
     sta     tileY
 
     ldx     index
+    inx
+    cpx     #10
+    bne     :+
+    ldx     #0
+:
     lda     quickBar,x
     jsr     drawTile_14x16
 
