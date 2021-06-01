@@ -401,8 +401,8 @@ mirror_after:
     cmp     #KEY_CTRL_L
     bne     :+
     jsr     inline_print
-    .byte   "Read slot (0-7):",0
-    lda     #8
+    .byte   "Read slot (0-4):",0
+    lda     #5
     jsr     getInputNumber
     bmi     load_exit
     jsr     loadSheet
@@ -420,8 +420,8 @@ load_exit:
     cmp     #KEY_CTRL_S
     bne     :+
     jsr     inline_print
-    .byte   "Save slot (0-7):",0
-    lda     #8
+    .byte   "Save slot (0-4):",0
+    lda     #5
     jsr     getInputNumber
     bmi     save_exit
     jsr     saveSheet
@@ -2363,76 +2363,29 @@ temp:       .byte   0
     lda     #13
     jsr     COUT
 
-    ; open file
-    jsr     MLI
-    .byte   CMD_OPEN
-    .word   open_params
-    bcc     :+
+    ; set pathname
+    lda     #<pathname
+    sta     open_params+1
+    lda     #>pathname
+    sta     open_params+2
 
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":unable to open file",13,0
-    rts
-:
-    ;jsr    inline_print
-    ;.byte  "File open",13,0
+    ; set address
+    lda     #<TILESHEET
+    sta     read_params+2
+    lda     #>TILESHEET
+    sta     read_params+3
 
-    ; set reference number 
-    lda     open_params+5
-    sta     read_params+1
-    sta     close_params+1
+    ; set size
+    lda     #<TILESHEET_SIZE
+    sta     read_params+4
+    lda     #>TILESHEET_SIZE
+    sta     read_params+5
 
-    ; read data
-    jsr    MLI
-    .byte  CMD_READ
-    .word  read_params
-    bcc    :+
-
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":unable to read data",13,0
-:
-    ;jsr    inline_print
-    ;.byte  "Data read",13,0
-
-    jsr    MLI
-    .byte  CMD_CLOSE
-    .word  close_params
-    bcc    :+
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":unable to close file",13,0
-:
-    jsr    inline_print
-    .byte  "Load complete",13,0
+    jmp     loadData    ; link return
 
     rts
-    
-open_params:
-    .byte   $3
-    .word   pathname      
-    .word   FILEBUFFER
-    .byte   $0                  ; reference number
-
-read_params:
-    .byte   $4
-    .byte   $0                  ; reference number
-    .word   TILESHEET           ; address of data buffer
-    .word   TILESHEET_SIZE      ; number of bytes to read
-    .word   $0                  ; number of bytes read
-
-close_params:
-    .byte   $1
-    .byte   $0                  ; reference number
 
 .endproc
-
-; Use a common pathname for load and store
-
-pathname:
-    .byte   14,"/DHGR/TILESET0"
-pathname_end:
-
 
 ;-----------------------------------------------------------------------------
 ; Save sheet
@@ -2449,99 +2402,31 @@ pathname_end:
     lda     #13
     jsr     COUT
 
-    ; open file
-    jsr     MLI
-    .byte   CMD_OPEN
-    .word   open_params
-    bcc     open_good
-    
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":unable to open file, creating new",13,0
+    ; set pathname (open)
+    lda     #<pathname
+    sta     open_params+1
+    lda     #>pathname
+    sta     open_params+2
 
-    ; create file
-     jsr     MLI
-    .byte   CMD_CREATE
-    .word   create_params
-    bcc     :+   
+    ; set pathname (create)
+    lda     #<pathname
+    sta     create_params+1
+    lda     #>pathname
+    sta     create_params+2
 
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":unable to create file",13,0
-    rts    ; give up!
-:
+    ; set address
+    lda     #<TILESHEET
+    sta     write_params+2
+    lda     #>TILESHEET
+    sta     write_params+3
 
-    ; open file again!
-    jsr     MLI
-    .byte   CMD_OPEN
-    .word   open_params
-    bcc     open_good
+    ; set size
+    lda     #<TILESHEET_SIZE
+    sta     write_params+4
+    lda     #>TILESHEET_SIZE
+    sta     write_params+5
 
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":still unable to open file",13,0
-    rts    ; give up
-
-open_good:
-    ;jsr    inline_print
-    ;.byte  "File open",13,0
-
-    ; set reference number 
-    lda     open_params+5
-    sta     write_params+1
-    sta     close_params+1
-
-    ; write data
-    jsr    MLI
-    .byte  CMD_WRITE
-    .word  write_params
-    bcc    :+
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":unable to write data",13,0
-:
-    ;jsr    inline_print
-    ;.byte  "Data written",13,0
-
-    jsr    MLI
-    .byte  CMD_CLOSE
-    .word  close_params
-    bcc    :+
-    jsr    PRBYTE
-    jsr    inline_print
-    .byte  ":unable to close file",13,0
-:
-    jsr    inline_print
-    .byte  "Save complete",13,0
-
-    rts
-    
-open_params:
-    .byte   $3
-    .word   pathname      
-    .word   FILEBUFFER
-    .byte   $0                  ; reference number
-
-create_params:
-    .byte   $7
-    .word   pathname
-    .byte   $C3                 ; access bits (full access)
-    .byte   $6                  ; file type (binary)
-    .word   TILESHEET
-    .byte   $1                  ; storage type (standard)
-    .word   $0                  ; creation date
-    .word   $0                  ; creation time
-
-write_params:
-    .byte   $4
-    .byte   $0                  ; reference number
-    .word   TILESHEET           ; address of data buffer
-    .word   TILESHEET_SIZE      ; number of bytes to write
-    .word   $0                  ; number of bytes written
-
-close_params:
-    .byte   $1
-    .byte   $0                  ; reference number
+    jmp     saveData    ; link return
 
 .endproc
 
@@ -2586,6 +2471,13 @@ pixelData:
 
 clipboardData:
     .res    16*16
+
+; ProDos pathname
+
+pathname:
+    .byte   14,"/DHGR/TILESET0"
+pathname_end:
+
 
 ; Lookup tables
 ;-----------------------------------------------------------------------------

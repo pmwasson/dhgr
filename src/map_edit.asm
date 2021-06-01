@@ -81,7 +81,7 @@ toggle_text_off:
 :
 
     ;------------------
-    ; A - select up more
+    ; ^A - select up more
     ;------------------
     cmp     #KEY_CTRL_A
     bne     :+
@@ -103,7 +103,7 @@ toggle_text_off:
 :
 
     ;------------------
-    ; Z - select down 5
+    ; ^Z - select down more
     ;------------------
     cmp     #KEY_CTRL_Z
     bne     :+
@@ -303,6 +303,41 @@ pan_down:
     bit     TXTSET
     jmp     MONZ        ; enter monitor
 :
+
+    ;------------------
+    ; ^L = Load
+    ;------------------
+    cmp     #KEY_CTRL_L
+    bne     :+
+    jsr     inline_print
+    .byte   "Read slot (0-4):",0
+    lda     #5
+    jsr     getInputNumber
+    bmi     load_exit
+    jsr     loadMap
+
+    ; redraw the screen
+    jmp     reset_loop
+
+load_exit:
+    jmp     command_loop
+:    
+
+    ;------------------
+    ; ^S = Save
+    ;------------------
+    cmp     #KEY_CTRL_S
+    bne     :+
+    jsr     inline_print
+    .byte   "Save slot (0-4):",0
+    lda     #5
+    jsr     getInputNumber
+    bmi     save_exit
+    jsr     saveMap
+
+save_exit:
+    jmp     command_loop
+: 
 
     ;------------------
     ; Set quick bar
@@ -521,12 +556,14 @@ max_digit:  .byte   0
 .proc printHelp
     bit     TXTSET
     jsr     inline_print
-    .byte   "  Arrows:  Move cursor",13
+    .byte   "  Arrows:     Move cursor",13
     .byte   "  Space:      Set location of cursor to selected tile",13
     .byte   "  0..9:       Set location of cursor to quick-bar tile",13
     .byte   "  Shift-0..9: Assign quick-bar to selected tile",13
     .byte   "  A,Z:        Scroll tile selection by 1",13
     .byte   "  Ctrl-A,Z:   Scroll tile selection by 5",13
+    .byte   "  Ctrl-L:     Load map",13
+    .byte   "  Ctrl-S:     Save map",13
     .byte   "  Ctrl-P:     Print map to output (printer)",13
     .byte   "              (Do a 1^P in monitor first!)",13
     .byte   "  Tab:        Switch tool",13
@@ -1052,6 +1089,85 @@ dumpCount: .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Load Map
+;-----------------------------------------------------------------------------
+.proc loadMap
+
+    ; set filename
+    clc
+    adc     #'0'
+    sta     pathname_end-1
+
+    lda     #13
+    jsr     COUT
+
+    ; set pathname
+    lda     #<pathname
+    sta     open_params+1
+    lda     #>pathname
+    sta     open_params+2
+
+    ; set address
+    lda     #<MAPSHEET
+    sta     read_params+2
+    lda     #>MAPSHEET
+    sta     read_params+3
+
+    ; set size
+    lda     #<MAPSHEET_SIZE
+    sta     read_params+4
+    lda     #>MAPSHEET_SIZE
+    sta     read_params+5
+
+    jmp     loadData    ; link return
+
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Save map
+;-----------------------------------------------------------------------------
+.proc saveMap
+
+    ; set filename
+    clc
+    adc     #'0'
+    sta     pathname_end-1
+
+    lda     #13
+    jsr     COUT
+
+    ; set pathname (open)
+    lda     #<pathname
+    sta     open_params+1
+    lda     #>pathname
+    sta     open_params+2
+
+    ; set pathname (create)
+    lda     #<pathname
+    sta     create_params+1
+    lda     #>pathname
+    sta     create_params+2
+
+    ; set address
+    lda     #<MAPSHEET
+    sta     write_params+2
+    lda     #>MAPSHEET
+    sta     write_params+3
+
+    ; set size
+    lda     #<MAPSHEET_SIZE
+    sta     write_params+4
+    lda     #>MAPSHEET_SIZE
+    sta     write_params+5
+
+    jmp     saveData    ; link return
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
 ; Global Variables
 ;-----------------------------------------------------------------------------
 
@@ -1078,6 +1194,12 @@ width_m1:           .byte   63
 
 ; Saved indexes
 quickBar:           .byte   0,1,2,3,4,5,6,7,8,9
+
+; ProDos pathname
+
+pathname:
+    .byte   10,"/DHGR/MAP0"
+pathname_end:
 
 ;------------------------------------------------
 ; Global scope (for tile edit)

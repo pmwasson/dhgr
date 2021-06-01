@@ -755,6 +755,182 @@ quit_params:
 
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; Load Data
+;   Load data using ProDOS
+;-----------------------------------------------------------------------------
+.proc loadData
+
+    ; open file
+    jsr     MLI
+    .byte   CMD_OPEN
+    .word   open_params
+    bcc     :+
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to open file",13,0
+    rts
+:
+    ;jsr    inline_print
+    ;.byte  "File open",13,0
+
+    ; set reference number 
+    lda     open_params+5
+    sta     read_params+1
+    sta     close_params+1
+
+    ; read data
+    jsr    MLI
+    .byte  CMD_READ
+    .word  read_params
+    bcc    :+
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to read data",13,0
+:
+    ;jsr    inline_print
+    ;.byte  "Data read",13,0
+
+    jsr    MLI
+    .byte  CMD_CLOSE
+    .word  close_params
+    bcc    :+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to close file",13,0
+:
+    jsr    inline_print
+    .byte  "Load complete",13,0
+
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Save data
+;
+;   Use prodos to save data
+;-----------------------------------------------------------------------------
+.proc saveData
+
+    ; open file
+    jsr     MLI
+    .byte   CMD_OPEN
+    .word   open_params
+    bcc     open_good
+    
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to open file, creating new",13,0
+
+    ; create file
+     jsr     MLI
+    .byte   CMD_CREATE
+    .word   create_params
+    bcc     :+   
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to create file",13,0
+    rts    ; give up!
+:
+
+    ; open file again!
+    jsr     MLI
+    .byte   CMD_OPEN
+    .word   open_params
+    bcc     open_good
+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":still unable to open file",13,0
+    rts    ; give up
+
+open_good:
+    ;jsr    inline_print
+    ;.byte  "File open",13,0
+
+    ; set reference number 
+    lda     open_params+5
+    sta     write_params+1
+    sta     close_params+1
+
+    ; write data
+    jsr    MLI
+    .byte  CMD_WRITE
+    .word  write_params
+    bcc    :+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to write data",13,0
+:
+    ;jsr    inline_print
+    ;.byte  "Data written",13,0
+
+    jsr    MLI
+    .byte  CMD_CLOSE
+    .word  close_params
+    bcc    :+
+    jsr    PRBYTE
+    jsr    inline_print
+    .byte  ":unable to close file",13,0
+:
+    jsr    inline_print
+    .byte  "Save complete",13,0
+
+    rts
+    
+.endproc
+
+;-----------------------------------------------------------------------------
+; Global ProDos parameters
+;-----------------------------------------------------------------------------
+
+open_params:
+    .byte   $3
+    .word   defaultPathname     ; *OVERWRITE* pathname     
+    .word   FILEBUFFER
+    .byte   $0                  ;             reference number
+
+read_params:
+    .byte   $4
+    .byte   $0                  ;             reference number
+    .word   $0                  ; *OVERWRITE* address of data buffer
+    .word   $0                  ; *OVERWRITE* number of bytes to read
+    .word   $0                  ;             number of bytes read
+
+; Note, not using the real address for the binary file load address as
+; the data buffer may move around with re-compiles, so we don't
+; want to rely on it.
+
+create_params:
+    .byte   $7
+    .word   defaultPathname     ; *OVERWRITE* pathname
+    .byte   $C3                 ;             access bits (full access)
+    .byte   $6                  ;             file type (binary)
+    .word   $6000               ;             binary file load address, default to $6000 (above hires pages)
+    .byte   $1                  ;             storage type (standard)
+    .word   $0                  ;             creation date
+    .word   $0                  ;             creation time
+
+write_params:
+    .byte   $4
+    .byte   $0                  ;             reference number
+    .word   MAPSHEET            ; *OVERWRITE* address of data buffer
+    .word   MAPSHEET_SIZE       ;             number of bytes to write
+    .word   $0                  ;             number of bytes written
+
+close_params:
+    .byte   $1
+    .byte   $0                  ;             reference number
+
+defaultPathname:
+    .byte   7,"UNKNOWN"
+
+
 ;-----------------------------------------------------------------------------
 ; Utilies
 
