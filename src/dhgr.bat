@@ -10,8 +10,10 @@ cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\dhgr.asm apple2.lib  -o dhgr.apple
 ::---------------------------------------------------------------------------
 :: Compile example
 ::---------------------------------------------------------------------------
-cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset0.asm apple2.lib  -o tileset0.apple2 -C ..\src\start4000.cfg
-cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset1.asm apple2.lib  -o tileset1.apple2 -C ..\src\start4000.cfg
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset0.asm apple2.lib  -o tileset0.apple2 -C ..\src\start6000.cfg
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset1.asm apple2.lib  -o tileset1.apple2 -C ..\src\start6000.cfg
+
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\map0.asm apple2.lib  -o map0.apple2 -C ..\src\start6000.cfg
 
 ::---------------------------------------------------------------------------
 :: Build disk 
@@ -29,13 +31,10 @@ java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk dhgr bin < dhgr.apple2
 :: Add samples
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset0 bin < tileset0.apple2 
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset1 bin < tileset1.apple2 
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk map0 bin < map0.apple2 
 
-:: Throw on basic and other games for fun
+:: Throw on basic
 java -jar C:\jar\AppleCommander.jar -p dhgr_prodos.dsk basic.system sys < ..\disk\BASIC.SYSTEM 
-
-:: Got disk full, so removing other games
-::java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk askey bin < ..\disk\askey.apple2 
-::java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk aa bin < ..\disk\aa.apple2 
 
 :: Copy results out of the build directory
 copy dhgr_prodos.dsk ..\disk

@@ -1038,6 +1038,7 @@ print_loop:
     lda     mapPtr0
     clc
     adc     #MAP_WIDTH
+    sta     mapPtr0
     bne     :+
     inc     mapPtr1
 :
