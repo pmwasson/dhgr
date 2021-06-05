@@ -806,7 +806,7 @@ loop_y:
     asl
     asl
     asl
-    asl
+    asl                 ; * MAP_WIDTH (64)
     sta     mapPtr0     ; assume 256 aligned
 
     lda     #0
@@ -969,7 +969,7 @@ waitExit:
     asl
     asl
     asl
-    asl
+    asl                 ; * MAP_WIDTH (64)
     sta     mapPtr0     ; assume 256 aligned
     rts
 

@@ -7,6 +7,10 @@ ca65 -I ..\src -t apple2 ..\src\dhgr.asm -l dhgr.dis
 :: Second time to produce object
 cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\dhgr.asm apple2.lib  -o dhgr.apple2 -C ..\src\start4000.cfg
 
+:: Compile Play
+ca65 -I ..\src -t apple2 ..\src\play.asm -l play.dis
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\play.asm apple2.lib  -o play.apple2 -C ..\src\start6000.cfg
+
 ::---------------------------------------------------------------------------
 :: Compile example
 ::---------------------------------------------------------------------------
@@ -27,6 +31,12 @@ java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk dhgr.system sys < C:\cc6
 
 :: Then include the program
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk dhgr bin < dhgr.apple2 
+
+:: Loader
+java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk play.system sys < C:\cc65\target\apple2\util\loader.system
+
+:: Play engine
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk play bin < play.apple2 
 
 :: Add samples
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset0 bin < tileset0.apple2 
