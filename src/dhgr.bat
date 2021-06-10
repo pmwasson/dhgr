@@ -26,17 +26,24 @@ cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\map0.asm apple2.lib  -o map0.apple
 :: Start with a blank prodos disk
 copy ..\disk\template_prodos.dsk dhgr_prodos.dsk
 
+
+
 :: Add the loader, which will load the program and execute it
 java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk dhgr.system sys < C:\cc65\target\apple2\util\loader.system
 
 :: Then include the program
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk dhgr bin < dhgr.apple2 
 
+
 :: Loader
 java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk play.system sys < C:\cc65\target\apple2\util\loader.system
 
 :: Play engine
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk play bin < play.apple2 
+
+
+
+
 
 :: Add samples
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset0 bin < tileset0.apple2 

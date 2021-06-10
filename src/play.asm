@@ -67,9 +67,11 @@ DIALOG_RS2      = 59
 DIALOG_LS1      = 42
 DIALOG_LS2      = 47
 
-MAP_X_OFFSET        =   2
+MAP_WIDTH           =  64
+MAP_HEIGHT          =  64
+MAP_X_OFFSET        =   6
 MAP_Y_OFFSET        =   6   ; must be even
-MAP_SCREEN_WIDTH    =   9
+MAP_SCREEN_WIDTH    =   7
 MAP_SCREEN_HEIGHT   =   7
 
 ;------------------------------------------------
@@ -81,7 +83,7 @@ MAP_SCREEN_HEIGHT   =   7
 ; Main program
 ;=============================================================================
 
-; Main loop
+; Main
 ;------------------------------------------------
 .proc main
 
@@ -151,7 +153,7 @@ gameLoop:
     sta     KBDSTRB
 
     cmp     #KEY_ESC
-    bne     gameLoop
+    bne     :+
 
     ; Set ctrl-y vector
     lda     #$4c        ; JMP
@@ -163,6 +165,49 @@ gameLoop:
 
     bit     TXTSET
     jmp     MONZ        ; enter monitor
+:
+
+    cmp     #KEY_UP
+    bne     :+
+    lda     mapY
+    beq     done_up
+    dec     mapY
+done_up:
+    jmp     gameLoop
+
+:
+ 
+    cmp     #KEY_DOWN
+    bne     :+
+    lda     mapY
+    cmp     #MAP_HEIGHT-MAP_SCREEN_HEIGHT
+    beq     done_down
+    inc     mapY
+done_down:
+    jmp     gameLoop
+:
+
+    cmp     #KEY_LEFT
+    bne     :+
+    lda     mapX
+    beq     done_left
+    dec     mapX
+done_left:
+    jmp     gameLoop
+:
+
+    cmp     #KEY_RIGHT
+    bne     :+
+    lda     mapX
+    cmp     #MAP_WIDTH-MAP_SCREEN_WIDTH
+    beq     done_right
+    inc     mapX
+done_right:
+    jmp     gameLoop
+:
+
+    jmp     gameLoop
+
 
 dialog:     .byte   "OINK!",0
 
@@ -601,17 +646,6 @@ nextPage:   .byte   0
 
 .proc drawMap
 
-    lda     #39
-    sta     animate
-
-    lda     gameTime
-    and     #1
-    beq     :+
-
-    inc     animate
-:
-
-
     lda     #0
     sta     indexY
 
@@ -658,7 +692,6 @@ loop_x:
     adc     indexX
     tay
     lda     (mapPtr0),y
-    lda     animate
     jsr     drawTile_14x16
 
     inc     indexX
@@ -673,7 +706,6 @@ loop_x:
 
     rts
 
-animate:    .byte   0
 temp:       .byte   0
 indexX:     .byte   0
 indexY:     .byte   0
@@ -732,6 +764,7 @@ drawLoop1:
     ;
     sta     RAMWRTON   
     ldy     #0
+
     lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #1
@@ -1279,6 +1312,48 @@ linePage:
 
 MAX_TILES       = 64
 .include "tileSheet_14x16.asm"
+
+; Append player
+
+; Old-man right
+.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$40,$5D,$00,$00,$6E,$01,$00
+.byte $00,$7C,$5D,$00,$00,$6E,$1B,$00,$00,$7C,$3F,$00,$00,$6E,$1B,$00
+.byte $00,$7C,$5D,$03,$00,$6E,$3B,$00,$00,$7C,$0D,$00,$00,$6E,$11,$00
+.byte $00,$7C,$5D,$00,$00,$6E,$1F,$00,$00,$7C,$7F,$00,$00,$7F,$1F,$00
+.byte $00,$00,$7F,$00,$00,$7F,$1F,$00,$00,$00,$7A,$00,$00,$55,$1F,$00
+.byte $00,$00,$2A,$00,$00,$45,$01,$00,$00,$00,$58,$00,$00,$45,$01,$00
+.byte $00,$00,$6E,$00,$00,$77,$01,$00,$00,$40,$55,$00,$00,$2A,$00,$00
+.byte $00,$40,$45,$00,$00,$2A,$08,$00,$00,$00,$00,$00,$00,$00,$00,$00
+
+; Old-man right (mask)
+.byte $7F,$3F,$00,$7F,$7F,$00,$7E,$7F,$7F,$03,$00,$7F,$7F,$00,$60,$7F
+.byte $7F,$00,$00,$7C,$1F,$00,$00,$7F,$7F,$00,$00,$7C,$1F,$00,$00,$7F
+.byte $7F,$00,$00,$40,$1F,$00,$00,$7F,$7F,$00,$00,$7C,$1F,$00,$00,$7F
+.byte $7F,$00,$00,$7C,$1F,$00,$00,$7F,$7F,$00,$00,$7C,$1F,$00,$00,$7F
+.byte $7F,$03,$00,$7C,$7F,$00,$00,$7F,$7F,$03,$00,$7C,$7F,$00,$00,$7F
+.byte $7F,$03,$00,$7F,$7F,$00,$60,$7F,$7F,$03,$00,$7F,$7F,$00,$60,$7F
+.byte $7F,$03,$00,$7F,$7F,$00,$60,$7F,$7F,$03,$00,$7F,$7F,$00,$60,$7F
+.byte $7F,$03,$00,$7C,$7F,$00,$00,$7F,$7F,$3F,$00,$7F,$7F,$00,$60,$7F
+
+; Old-man left
+.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$40,$5D,$00,$00,$6E,$01,$00
+.byte $00,$74,$5D,$00,$00,$6E,$1F,$00,$00,$74,$5D,$00,$00,$7D,$1F,$00
+.byte $00,$77,$5D,$00,$20,$6E,$1F,$00,$00,$20,$5D,$00,$00,$6C,$1F,$00
+.byte $00,$7C,$5D,$00,$00,$6E,$1F,$00,$00,$7C,$7F,$00,$00,$7F,$1F,$00
+.byte $00,$7C,$6F,$00,$00,$7F,$01,$00,$00,$7C,$2A,$00,$00,$57,$01,$00
+.byte $00,$00,$28,$00,$00,$55,$01,$00,$00,$40,$28,$00,$00,$46,$01,$00
+.byte $00,$00,$6E,$00,$00,$77,$01,$00,$00,$40,$55,$00,$00,$2A,$00,$00
+.byte $00,$10,$55,$00,$00,$2A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+
+; Old-man left (mask)
+.byte $7F,$3F,$00,$7F,$7F,$00,$7E,$7F,$7F,$03,$00,$7F,$7F,$00,$60,$7F
+.byte $7F,$00,$00,$7C,$1F,$00,$00,$7F,$7F,$00,$00,$7C,$1F,$00,$00,$7F
+.byte $7F,$00,$00,$7C,$01,$00,$00,$7F,$7F,$00,$00,$7C,$1F,$00,$00,$7F
+.byte $7F,$00,$00,$7C,$1F,$00,$00,$7F,$7F,$00,$00,$7C,$1F,$00,$00,$7F
+.byte $7F,$00,$00,$7F,$1F,$00,$60,$7F,$7F,$00,$00,$7F,$1F,$00,$60,$7F
+.byte $7F,$03,$00,$7F,$7F,$00,$60,$7F,$7F,$03,$00,$7F,$7F,$00,$60,$7F
+.byte $7F,$03,$00,$7F,$7F,$00,$60,$7F,$7F,$03,$00,$7F,$7F,$00,$60,$7F
+.byte $7F,$00,$00,$7F,$1F,$00,$60,$7F,$7F,$03,$00,$7F,$7F,$00,$7E,$7F
 
 ;--------------------------------------------------------------------------
 
