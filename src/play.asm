@@ -145,6 +145,9 @@ MAP_SCREEN_HEIGHT   =   7
 gameLoop:
 
     inc     gameTime
+    lda     gameTime
+    lsr
+    sta     animateTime
 
     jsr     drawScreen
 
@@ -209,7 +212,7 @@ done_right:
     jmp     gameLoop
 
 
-dialog:     .byte   "OINK!",0
+dialog:     .byte   "ANIMATE!",0
 
 .endproc
 
@@ -655,14 +658,14 @@ loop_y:
     lda     mapY
     clc
     adc     indexY
-    sta     temp
+    sta     worldY
     lsr
     lsr     ; /4
     clc
     adc     #>MAPSHEET
     sta     mapPtr1
 
-    lda     temp
+    lda     worldY
     asl
     asl
     asl
@@ -691,7 +694,26 @@ loop_x:
     clc
     adc     indexX
     tay
+    adc     worldY
+    adc     animateTime
+    and     #$F
+    sta     animateIndex
     lda     (mapPtr0),y
+    tax
+    ldy     animateTable,x      ; a = animation offst table base
+    beq     :+
+    clc
+    tya
+    adc     animateIndex
+    tay
+    txa
+    adc     animateOffset,y     ; add offset
+
+
+ ;   bit     TXTSET
+ ;   brk
+
+ :
     jsr     drawTile_14x16
 
     inc     indexX
@@ -706,9 +728,10 @@ loop_x:
 
     rts
 
-temp:       .byte   0
-indexX:     .byte   0
-indexY:     .byte   0
+worldY:         .byte   0
+indexX:         .byte   0
+indexY:         .byte   0
+animateIndex:   .byte   0
 
 .endproc
 
@@ -1185,6 +1208,7 @@ defaultPathname:
 
 page:               .byte   0
 gameTime:           .byte   0
+animateTime:        .byte   0
 
 mapX:               .byte   0
 mapY:               .byte   0
@@ -1265,6 +1289,131 @@ linePage:
     .byte   >$2350
     .byte   >$23D0
 
+
+
+animateTable:
+; Animation offset table for each tile
+    .byte   $00     ; 00
+    .byte   $00     ; 01
+    .byte   $00     ; 02
+    .byte   $00     ; 03
+    .byte   $00     ; 04
+    .byte   $00     ; 05
+    .byte   $00     ; 06
+    .byte   $00     ; 07
+    .byte   $00     ; 08
+    .byte   $00     ; 09
+    .byte   $00     ; 0a
+    .byte   $00     ; 0b
+    .byte   $00     ; 0c
+    .byte   $00     ; 0d
+    .byte   $00     ; 0e
+    .byte   $00     ; 0f
+    .byte   $00     ; 10
+    .byte   $00     ; 11
+    .byte   $10     ; 12 - water
+    .byte   $00     ; 13
+    .byte   $00     ; 14
+    .byte   $10     ; 15 - pond rock
+    .byte   $00     ; 16
+    .byte   $00     ; 17
+    .byte   $00     ; 18
+    .byte   $00     ; 19
+    .byte   $00     ; 1a
+    .byte   $00     ; 1b
+    .byte   $00     ; 1c
+    .byte   $00     ; 1d
+    .byte   $00     ; 1e
+    .byte   $00     ; 1f
+    .byte   $00     ; 20
+    .byte   $20     ; 21 - Girl
+    .byte   $00     ; 22
+    .byte   $20     ; 23 - Bee Boy
+    .byte   $00     ; 24
+    .byte   $20     ; 25 - Octo
+    .byte   $00     ; 26
+    .byte   $20     ; 27 - Pig
+    .byte   $00     ; 28
+    .byte   $30     ; 29 - Doll
+    .byte   $00     ; 2a
+    .byte   $00     ; 2b
+    .byte   $00     ; 2c
+    .byte   $00     ; 2d
+    .byte   $00     ; 2e
+    .byte   $00     ; 2f
+animateOffset:
+    .byte   $00     ; 30
+    .byte   $00     ; 31
+    .byte   $00     ; 32
+    .byte   $00     ; 33
+    .byte   $00     ; 34
+    .byte   $00     ; 35 
+    .byte   $00     ; 36
+    .byte   $00     ; 37
+    .byte   $00     ; 38
+    .byte   $00     ; 39
+    .byte   $00     ; 3a
+    .byte   $00     ; 3b
+    .byte   $00     ; 3c
+    .byte   $00     ; 3d
+    .byte   $00     ; 3e
+    .byte   $00     ; 3f
+
+; Overlap animate offset with animate table since 0-f invalid
+
+    ; 10 - water
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   1
+    .byte   1
+    .byte   1
+    .byte   2
+    .byte   2
+    .byte   2
+    .byte   2
+    .byte   2
+    .byte   1
+    .byte   1
+    .byte   1
+
+    ; 20 - blink
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   1
+
+    ; 30 - alternate
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
 
 ;--------------------------------------------------------------------------
 ; Default tiles
