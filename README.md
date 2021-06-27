@@ -17,7 +17,7 @@ You can grab the latest disk image for PRODOS: https://github.com/pmwasson/dhgr/
 
 Requires an Apple that supports double hi-res graphics.
 
-The code is still under devolepment and features and commands may undergo changes.
+The code is still under development and features and commands may undergo changes.
 
 ## Toolchain
 Using ca65 (part of the cc65 compiler) for assembling. https://cc65.github.io/
