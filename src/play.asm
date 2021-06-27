@@ -212,7 +212,7 @@ done_right:
     jmp     gameLoop
 
 
-dialog:     .byte   "ANIMATE!",0
+dialog:     .byte   "DIALOG!",0
 
 .endproc
 
@@ -1337,7 +1337,7 @@ animateTable:
     .byte   $30     ; 29 - Doll
     .byte   $00     ; 2a
     .byte   $00     ; 2b
-    .byte   $00     ; 2c
+    .byte   $10     ; 2c - Lily Pad
     .byte   $00     ; 2d
     .byte   $00     ; 2e
     .byte   $00     ; 2f
