@@ -10,11 +10,18 @@
 ; Grab ca65 defines to start with and then add missing ones
 .include "apple2.inc"
 
+; Zero Page
+A1              :=  $3c
+A2              :=  $3e
+A4              :=  $42
+
 ; Memory map
 HGRPAGE1        := $2000
 HGRPAGE2        := $4000
 
 ; Soft switches
+RAMRDOFF        := $C002
+RAMRDON         := $C003
 RAMWRTOFF       := $C004
 RAMWRTON        := $C005
 CLR80VID        := $C00C
@@ -29,6 +36,7 @@ BUTTON1 		:= $C062 	; Bit 7 set if paddle button 1 is pressed
 BUTTON2 		:= $C063 	; Bit 7 set if paddle button 2 is pressed
 
 ; ROM routines
+AUXMOVE 		:= $C311 	; Aux memory copy
 GR              := $F390    ; Low-res mixed graphics mode
 TEXT            := $F399    ; Text-mode
 HGR             := $F3E2    ; Turn on hi-res mode, page 1 mixed mode, clear    

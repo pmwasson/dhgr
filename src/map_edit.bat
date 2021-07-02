@@ -1,1 +1,0 @@
-dhgr.bat

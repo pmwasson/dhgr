@@ -12,6 +12,10 @@ cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\dhgr.asm apple2.lib  -o dhgr.apple
 ca65 -I ..\src -t apple2 ..\src\play.asm -l play.dis
 cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\play.asm apple2.lib  -o play.apple2 -C ..\src\start6000.cfg
 
+:: Compile Engine
+ca65 -I ..\src -t apple2 ..\src\engine.asm -l engine.dis
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\engine.asm apple2.lib  -o engine.apple2 -C ..\src\startC00.cfg
+
 ::---------------------------------------------------------------------------
 :: Compile example
 ::---------------------------------------------------------------------------
@@ -28,13 +32,17 @@ copy ..\disk\template_prodos.dsk dhgr_prodos.dsk
 
 :: Put boot program first
 
-:: play: loader, then binary
-java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk play.system sys < C:\cc65\target\apple2\util\loader.system
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk play bin < play.apple2 
-
 :: toolbox: loader, then binary
 java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk dhgr.system sys < C:\cc65\target\apple2\util\loader.system
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk dhgr bin < dhgr.apple2 
+
+:: Engine ::
+java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk engine.system sys < C:\cc65\target\apple2\util\loader.system
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk engine bin < engine.apple2 
+
+:: play: loader, then binary
+java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk play.system sys < C:\cc65\target\apple2\util\loader.system
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk play bin < play.apple2 
 
 :: Throw on basic
 java -jar C:\jar\AppleCommander.jar -p dhgr_prodos.dsk basic.system sys < ..\disk\BASIC.SYSTEM 
