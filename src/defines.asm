@@ -44,6 +44,8 @@ screenPtr0      :=  $1b     ; Screen pointer
 screenPtr1      :=  $1c
 mapPtr0 		:=  $ec
 mapPtr1 		:=  $ed
+stringPtr0      :=  $fe
+stringPtr1      :=  $ff
 
 ; Indexes
 bgTile          :=  $1d
@@ -55,17 +57,15 @@ tileY           :=  $e8
 drawPage        :=  $d7
 invMask         :=  $ee
 
-stringPtr0      :=  $fe
-stringPtr1      :=  $ff
-
 ; Available: ef,fa,fb,fc,fd
 ; Can probably reuse more since not planning on support dos3.3
 
 ; Memory map
 ;---------------------------------------------------------
-FILEBUFFER      := $800    	 ;User PRODOS filebuffer, 512 bytes
+FILEBUFFER      := $800   	; User PRODOS filebuffer, 512 bytes
 HGRPAGE1        := $2000
 HGRPAGE2        := $4000
+READBUFFER 		:= $4000 	; Share read buffer with page2
 
 ; Soft switches
 ;---------------------------------------------------------
