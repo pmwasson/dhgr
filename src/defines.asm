@@ -10,16 +10,65 @@
 ; Grab ca65 defines to start with and then add missing ones
 .include "apple2.inc"
 
+
 ; Zero Page
+;---------------------------------------------------------
+; Safe zero page locations from Inside the Apple IIe:
+;
+;                         $06 $07 
+; $08 $09
+;     $19 $1A $1B $1C $1D $1E
+;                         $CE $CF
+;                             $D7
+;             $E3
+; $E8 
+;                 $EC $ED $EE $EF
+;         $FA $FB $FC $FD $FE $FF 
+
+; ROM defined
+;-------------
 A1              :=  $3c
 A2              :=  $3e
 A4              :=  $42
 
+; User defined
+;--------------
+; pointers
+bgPtr0          :=  $06     ; Background Tile pointer
+bgPtr1          :=  $07
+fgPtr0          :=  $08     ; Foreground Tile pointer
+fgPtr1          :=  $09
+maskPtr0        :=  $19     ; mask pointer
+maskPtr1        :=  $1a
+screenPtr0      :=  $1b     ; Screen pointer
+screenPtr1      :=  $1c
+mapPtr0 		:=  $ec
+mapPtr1 		:=  $ed
+
+; Indexes
+bgTile          :=  $1d
+fgTile          :=  $1e
+tileX           :=  $e3
+tileY           :=  $e8
+
+; Modes
+drawPage        :=  $d7
+invMask         :=  $ee
+
+stringPtr0      :=  $fe
+stringPtr1      :=  $ff
+
+; Available: ef,fa,fb,fc,fd
+; Can probably reuse more since not planning on support dos3.3
+
 ; Memory map
+;---------------------------------------------------------
+FILEBUFFER      := $800    	 ;User PRODOS filebuffer, 512 bytes
 HGRPAGE1        := $2000
 HGRPAGE2        := $4000
 
 ; Soft switches
+;---------------------------------------------------------
 RAMRDOFF        := $C002
 RAMRDON         := $C003
 RAMWRTOFF       := $C004
@@ -36,6 +85,7 @@ BUTTON1 		:= $C062 	; Bit 7 set if paddle button 1 is pressed
 BUTTON2 		:= $C063 	; Bit 7 set if paddle button 2 is pressed
 
 ; ROM routines
+;---------------------------------------------------------
 AUXMOVE 		:= $C311 	; Aux memory copy
 GR              := $F390    ; Low-res mixed graphics mode
 TEXT            := $F399    ; Text-mode
@@ -54,6 +104,7 @@ WAIT            := $FCA8    ; Wait 0.5*(26 + 27*A + 5*A*A) microseconds
 PREAD 			:= $FB1E    ; Read paddle X (0=hor,1=vert on joystick), result in Y
 
 ; PRODOS
+;---------------------------------------------------------
 MLI             := $BF00    ; PRODOS MLI call
 CMD_QUIT        = $65
 CMD_CREATE      = $C0
@@ -63,6 +114,7 @@ CMD_WRITE       = $CB
 CMD_CLOSE       = $CC
 
 ; Keyboard
+;---------------------------------------------------------
 KEY_CTRL_A 		= $81
 KEY_CTRL_B 		= $82
 KEY_CTRL_C 		= $83
@@ -91,8 +143,8 @@ KEY_9 			= $B9
 KEY_A           = $C1
 KEY_Z           = $DA
 
-
-; Directions
+; Constants
+;---------------------------------------------------------
 DIR_LEFT        =   0
 DIR_RIGHT       =   1
 DIR_UP          =   2

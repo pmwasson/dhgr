@@ -4,49 +4,38 @@
 ; DHGR Toolbox -- Play
 ;  Game engine for DHGR maps and tiles
 
+; Proposed memory map
+;------------------------------------------------
+;
+;               Main                Aux
+;
+;   0000-0BFF   [ System usage / text pages     ]
+;
+;   0C00-0DFF   [ ProDos buffer ][ Unused       ]
+;
+;   0E00-1FFF   [ Engine routines               ]
+;
+;   2000-3FFF   [ DGHR Page 1                   ]
+;
+;   4000-5FFF   [ DGHR Page 2                   ]
+;               [ Read data     ]
+;
+;   6000-7FFF   [ Game program  ][ Map 64x64x2  ]
+;   8000-8FFF   [ Game program  ][ Dialog       ]
+;   
+;   9000-9FFF   [ Background Tiles (64)         ]
+;
+;   A000-AFFF   [ Foreground Tiles + Masks (32) ]
+;
+;   B000-B7FF   [ Font Tiles (128)              ]
+;
+
 ;------------------------------------------------
 ; Constants
 ;------------------------------------------------
 
 .include "defines.asm"
 .include "macros.asm"
-
-;------------------------------------------------
-; Zero page usage
-;------------------------------------------------
-
-; Safe zero page locations from Inside the Apple IIe:
-;
-;                         $06 $07 
-; $08 $09
-;     $19 $1A $1B $1C $1D $1E
-;                         $CE $CF
-;                             $D7
-;             $E3
-; $E8 
-;                 $EC $ED $EE $EF
-;         $FA $FB $FC $FD $FE $FF 
-;
-; Reserve $FE/$FF for inline print
-
-; Pointers
-bgPtr0          :=  $06     ; Background Tile pointer
-bgPtr1          :=  $07
-fgPtr0          :=  $08     ; Foreground Tile pointer
-fgPtr1          :=  $09
-maskPtr0        :=  $19     ; mask pointer
-maskPtr1        :=  $1a
-screenPtr0      :=  $1b     ; Screen pointer
-screenPtr1      :=  $1c
-
-; Indexes
-bgTile          :=  $1d
-fgTile          :=  $1e
-tileX           :=  $ce
-tileY           :=  $cf
-drawPage        :=  $d7
-
-;------------------------------------------------
 
 .segment "CODE"
 .org    $C00
@@ -89,6 +78,7 @@ bgSheet_7x8:    .word   sheet_bg_7x8
     ; init variables
     lda     #0
     sta     drawPage
+    sta     invMask
     rts
 
 .endproc
@@ -340,9 +330,11 @@ drawTile:
 drawLoop:
     ldy     #0
     lda     (bgPtr0),y
+    eor     invMask
     sta     (screenPtr0),y
     ldy     #1
     lda     (bgPtr0),y
+    eor     invMask
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing

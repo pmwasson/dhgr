@@ -13,37 +13,6 @@
 .include "macros.asm"
 
 ;------------------------------------------------
-; Zero page usage
-;------------------------------------------------
-
-; Safe zero page locations from Inside the Apple IIe:
-;
-;                         $06 $07 
-; $08 $09
-;     $19 $1A $1B $1C $1D $1E
-;                         $CE $CF
-;                             $D7
-;             $E3
-; $E8 
-;                 $EC $ED $EE $EF
-;         $FA $FB $FC $FD $FE $FF 
-;
-; Reserve $FE/$FF for inline print
-
-; DHGR
-tilePtr0        :=  $06     ; Tile pointer
-tilePtr1        :=  $07
-screenPtr0      :=  $08     ; Screen pointer
-screenPtr1      :=  $09
-
-; Map
-mapPtr0         :=  $EC
-mapPtr1         :=  $ED
-
-; memory map
-FILEBUFFER      =   $800        ; PRODOS filebuffer
-
-;------------------------------------------------
 ; Constants
 ;------------------------------------------------
 
@@ -467,43 +436,43 @@ drawLoop1:
     ;
     sta     RAMWRTON   
     ldy     #0
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
 
     ; Bytes 4-7 in MAIN memory
     ;
     sta     RAMWRTOFF
 
-    lda     tilePtr0    ; offset tile pointer by 4
+    lda     bgPtr0    ; offset tile pointer by 4
     adc     #4
-    sta     tilePtr0
+    sta     bgPtr0
 
     ldy     #0
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing
-    lda     tilePtr0
+    lda     bgPtr0
     adc     #4
-    sta     tilePtr0
+    sta     bgPtr0
 
     lda     screenPtr1
     adc     #4
@@ -528,43 +497,43 @@ drawLoop2:
     ;
     sta     RAMWRTON   
     ldy     #0
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
 
     ; Bytes 4-7 in MAIN memory
     ;
     sta     RAMWRTOFF
 
-    lda     tilePtr0    ; offset tile pointer by 4
+    lda     bgPtr0    ; offset tile pointer by 4
     adc     #4
-    sta     tilePtr0
+    sta     bgPtr0
 
     ldy     #0
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing
-    lda     tilePtr0
+    lda     bgPtr0
     adc     #4
-    sta     tilePtr0
+    sta     bgPtr0
 
     lda     screenPtr1
     adc     #4
@@ -587,12 +556,12 @@ temp0:  .byte   0
     lsr                     ; *128
     lda     #0
     ror
-    sta     tilePtr0
+    sta     bgPtr0
     tya     ; restore A
     lsr                     ; /2
     clc
     adc     currentSheet_14x16+1
-    sta     tilePtr1
+    sta     bgPtr1
     rts
 
 .endproc
@@ -640,11 +609,11 @@ drawLoop1:
     ;
     sta     RAMWRTON   
     ldy     #0
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     eor     invMask
     sta     (screenPtr0),y
     ldy     #1
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     eor     invMask
     sta     (screenPtr0),y
 
@@ -652,23 +621,23 @@ drawLoop1:
     ;
     sta     RAMWRTOFF
 
-    lda     tilePtr0    ; offset tile pointer by 2
+    lda     bgPtr0    ; offset tile pointer by 2
     adc     #2
-    sta     tilePtr0
+    sta     bgPtr0
 
     ldy     #0
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     eor     invMask
     sta     (screenPtr0),y
     ldy     #1
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     eor     invMask
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing
-    lda     tilePtr0
+    lda     bgPtr0
     adc     #2
-    sta     tilePtr0
+    sta     bgPtr0
 
     lda     screenPtr1
     adc     #4
@@ -694,14 +663,14 @@ temp0:  .byte   0
     asl
     asl
     asl
-    sta     tilePtr0
+    sta     bgPtr0
     tya     ; restore A
     lsr                     ; /8
     lsr
     lsr
     clc
     adc     currentSheet_7x8+1
-    sta     tilePtr1
+    sta     bgPtr1
 
     rts
 
@@ -723,14 +692,14 @@ temp0:  .byte   0
     asl
     asl
     asl
-    sta     tilePtr0
+    sta     bgPtr0
     tya     ; restore A
     lsr                     ; /8
     lsr
     lsr
     clc
     adc     #>interface_7x8
-    sta     tilePtr1
+    sta     bgPtr1
 
     jmp     drawTile_7x8::bypassTilePointer
 .endproc
@@ -942,10 +911,6 @@ defaultPathname:
 
 currentSheet_7x8:   .word   tileSheet_7x8
 currentSheet_14x16: .word   tileSheet_14x16
-
-tileX:              .byte   0
-tileY:              .byte   0
-invMask:            .byte   0
 
 ; Box routine   
 boxLeft:            .byte   0

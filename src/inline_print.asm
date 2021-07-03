@@ -11,10 +11,6 @@
 ;   .byte   "HELLO WORLD!",0
 ;   <next instruction>
 
-; Zero page usage
-stringPtr0      := $FE
-stringPtr1      := $FF
-
 .proc inline_print
     ; Pop return address to find string
     pla

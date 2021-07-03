@@ -4,12 +4,69 @@
 ; DHGR Toolbox -- Play
 ;  Game engine for DHGR maps and tiles
 
+; Proposed memory map (may change)
+;------------------------------------------------
+;
+;               Main                Aux
+;
+;   0000-0BFF   [ System usage / text pages     ]
+;
+;   0C00-0DFF   [ ProDos buffer ][ Unused       ]
+;
+;   0E00-1FFF   [ Engine routines               ]
+;
+;   2000-3FFF   [ DGHR Page 1                   ]
+;
+;   4000-5FFF   [ DGHR Page 2                   ]
+;               [ Read data     ]
+;
+;   6000-7FFF   [ Game program  ][ Map 64x64x2  ]
+;   8000-8FFF   [ Game program  ][ Dialog       ]
+;   
+;   9000-9FFF   [ Background Tiles (64)         ]
+;
+;   A000-AFFF   [ Foreground Tiles + Masks (32) ]
+;
+;   B000-B7FF   [ Font Tiles (128)              ]
+;
+
 ;------------------------------------------------
 ; Constants
 ;------------------------------------------------
 
 .include "defines.asm"
 .include "macros.asm"
+
+;------------------------------------------------
+; Zero page usage
+;------------------------------------------------
+
+; Safe zero page locations from Inside the Apple IIe:
+;
+;                         $06 $07 
+; $08 $09
+;     $19 $1A $1B $1C $1D $1E
+;                         $CE $CF
+;                             $D7
+;             $E3
+; $E8 
+;                 $EC $ED $EE $EF
+;         $FA $FB $FC $FD $FE $FF 
+;
+; Reserve $FE/$FF for inline print
+
+; DHGR
+tilePtr0        :=  $06     ; Tile pointer
+tilePtr1        :=  $07
+screenPtr0      :=  $08     ; Screen pointer
+screenPtr1      :=  $09
+
+; Map
+mapPtr0         :=  $EC
+mapPtr1         :=  $ED
+
+; memory map
+FILEBUFFER      =   $800        ; PRODOS filebuffer
 
 ;------------------------------------------------
 ; Constants
@@ -65,17 +122,17 @@ MAP_SCREEN_HEIGHT   =   7
     jsr     dhgrInit    ; Turn on dhgr
 
     lda     #$00        ; Clear both pages
-    sta     drawPage        
+    sta     page        
     jsr     clearScreen
     jsr     drawFrame
 
     lda     #$20        ; Clear both pages
-    sta     drawPage        
+    sta     page        
     jsr     clearScreen
     jsr     drawFrame
 
     lda     #$00
-    sta     drawPage
+    sta     page
 
 
     ; set up dialog
@@ -102,7 +159,7 @@ MAP_SCREEN_HEIGHT   =   7
     jsr     drawDialog
 
     lda     #$20
-    sta     drawPage
+    sta     page
 
     lda     #<dialog
     sta     stringPtr0
@@ -219,7 +276,7 @@ dialog:     .byte   "DIALOG!",0
     bmi     pageSelect
     lda     #$20    ; displaying page 1, draw on page 2
 pageSelect:
-    sta     drawPage
+    sta     page
 
 
     ; Draw map
@@ -558,7 +615,7 @@ offset: .byte   0
     sta     screenPtr0
     clc
     lda     #$20
-    adc     drawPage
+    adc     page
     sta     screenPtr1
     adc     #$20
     sta     nextPage
@@ -730,12 +787,12 @@ animateIndex:   .byte   0
     lsr                     ; *128
     lda     #0
     ror
-    sta     bgPtr0
+    sta     tilePtr0
     tya     ; restore A
     lsr                     ; /2
     clc
     adc     currentSheet_14x16+1
-    sta     bgPtr1
+    sta     tilePtr1
 
     ; calculate screen pointer
     ldx     tileY
@@ -744,7 +801,7 @@ animateIndex:   .byte   0
     adc     lineOffset,x    ; + lineOffset
     sta     screenPtr0    
     lda     linePage,x
-    adc     drawPage        ; assume carry still cleared
+    adc     page            ; assume carry still cleared
     sta     screenPtr1
 
     sta     CLR80COL        ; Use RAMWRT for aux mem
@@ -757,43 +814,43 @@ drawLoop1:
     sta     RAMWRTON   
     ldy     #0
 
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
 
     ; Bytes 4-7 in MAIN memory
     ;
     sta     RAMWRTOFF
 
-    lda     bgPtr0    ; offset tile pointer by 4
+    lda     tilePtr0    ; offset tile pointer by 4
     adc     #4
-    sta     bgPtr0
+    sta     tilePtr0
 
     ldy     #0
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing
-    lda     bgPtr0
+    lda     tilePtr0
     adc     #4
-    sta     bgPtr0
+    sta     tilePtr0
 
     lda     screenPtr1
     adc     #4
@@ -818,43 +875,43 @@ drawLoop2:
     ;
     sta     RAMWRTON   
     ldy     #0
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
 
     ; Bytes 4-7 in MAIN memory
     ;
     sta     RAMWRTOFF
 
-    lda     bgPtr0    ; offset tile pointer by 4
+    lda     tilePtr0    ; offset tile pointer by 4
     adc     #4
-    sta     bgPtr0
+    sta     tilePtr0
 
     ldy     #0
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing
-    lda     bgPtr0
+    lda     tilePtr0
     adc     #4
-    sta     bgPtr0
+    sta     tilePtr0
 
     lda     screenPtr1
     adc     #4
@@ -898,14 +955,14 @@ temp0:  .byte   0
     asl
     asl
     asl
-    sta     bgPtr0
+    sta     tilePtr0
     tya     ; restore A
     lsr                     ; /8
     lsr
     lsr
     clc
     adc     currentSheet_7x8+1
-    sta     bgPtr1
+    sta     tilePtr1
 
     sta     CLR80COL        ; Use RAMWRT for aux mem
 
@@ -916,7 +973,7 @@ temp0:  .byte   0
     adc     lineOffset,x    ; + lineOffset
     sta     screenPtr0    
     lda     linePage,x
-    adc     drawPage
+    adc     page
     sta     screenPtr1
 
     clc     ; no carry generated inside of loop
@@ -926,11 +983,11 @@ drawLoop1:
     ;
     sta     RAMWRTON   
     ldy     #0
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     eor     invMask
     sta     (screenPtr0),y
     ldy     #1
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     eor     invMask
     sta     (screenPtr0),y
 
@@ -938,23 +995,23 @@ drawLoop1:
     ;
     sta     RAMWRTOFF
 
-    lda     bgPtr0    ; offset tile pointer by 2
+    lda     tilePtr0    ; offset tile pointer by 2
     adc     #2
-    sta     bgPtr0
+    sta     tilePtr0
 
     ldy     #0
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     eor     invMask
     sta     (screenPtr0),y
     ldy     #1
-    lda     (bgPtr0),y
+    lda     (tilePtr0),y
     eor     invMask
     sta     (screenPtr0),y
 
     ; assumes aligned such that there are no page crossing
-    lda     bgPtr0
+    lda     tilePtr0
     adc     #2
-    sta     bgPtr0
+    sta     tilePtr0
 
     lda     screenPtr1
     adc     #4
@@ -1175,6 +1232,7 @@ defaultPathname:
 ; Global Variables
 ;-----------------------------------------------------------------------------
 
+page:               .byte   0
 gameTime:           .byte   0
 animateTime:        .byte   0
 
@@ -1183,6 +1241,10 @@ mapY:               .byte   0
 
 currentSheet_7x8:   .word   tileSheet_7x8
 currentSheet_14x16: .word   tileSheet_14x16
+
+tileX:              .byte   0
+tileY:              .byte   0
+invMask:            .byte   0
 
 ; Box routine   
 boxLeft:            .byte   0

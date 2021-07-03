@@ -913,7 +913,7 @@ dump_loop:
     lda     #$80 + '$'
     jsr     COUT
     ldy     dump_count
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     jsr     PRBYTE
     inc     dump_count
     lda     dump_count
@@ -1833,18 +1833,18 @@ done:
 
     ldy     tileOffset
     lda     pixelByte0
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
     iny                     ; +1
     lda     pixelByte2
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
     iny
     iny
     iny                     ; +4
     lda     pixelByte1
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
     iny                     ; +5
     lda     pixelByte3
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
 
     rts
 
@@ -1863,16 +1863,16 @@ done:
 
     ldy     tileOffset
     lda     pixelByte0
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
     iny                     ; +1
     lda     pixelByte2
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
     iny                     ; +2
     lda     pixelByte1
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
     iny                     ; +3
     lda     pixelByte3
-    sta     (tilePtr0),y
+    sta     (bgPtr0),y
 
     rts
 
@@ -2020,16 +2020,16 @@ yloop:
 
     ; read 4 bytes - bytes are interleaved
     ldy     tempIndex
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte0
     iny
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte2
     iny
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte1
     iny
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte3
     iny
     sty     tempIndex
@@ -2066,18 +2066,18 @@ yloop:
     ; first 4 are at y 0, 4, 1, 5
 
     ldy     tempIndex
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte0
     iny     ; +1
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte2
     iny     ; +2
     iny     ; +3
     iny     ; +4
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte1
     iny     ; +5
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte3
     dey     ; 4
     dey     ; 3
@@ -2089,18 +2089,18 @@ yloop:
     ; next 4 are at y 2, 6, 3, 7
 
     ldy     tempIndex
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte0
     iny     ; +3
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte2
     iny     ; +4
     iny     ; +5
     iny     ; +6
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte1
     iny     ; +7
-    lda     (tilePtr0),y
+    lda     (bgPtr0),y
     sta     pixelByte3
     iny     ; +8 -> next row
     sty     tempIndex
