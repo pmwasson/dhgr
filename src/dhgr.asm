@@ -747,13 +747,13 @@ quit_params:
 
     ; set reference number 
     lda     open_params+5
-    sta     read_params+1
+    sta     rw_params+1
     sta     close_params+1
 
     ; read data
     jsr    MLI
     .byte  CMD_READ
-    .word  read_params
+    .word  rw_params
     bcc    :+
 
     jsr    PRBYTE
@@ -824,13 +824,13 @@ open_good:
 
     ; set reference number 
     lda     open_params+5
-    sta     write_params+1
+    sta     rw_params+1
     sta     close_params+1
 
     ; write data
     jsr    MLI
     .byte  CMD_WRITE
-    .word  write_params
+    .word  rw_params
     bcc    :+
     jsr    PRBYTE
     jsr    inline_print
@@ -864,7 +864,7 @@ open_params:
     .word   FILEBUFFER
     .byte   $0                  ;             reference number
 
-read_params:
+rw_params:
     .byte   $4
     .byte   $0                  ;             reference number
     .word   $0                  ; *OVERWRITE* address of data buffer
@@ -884,13 +884,6 @@ create_params:
     .byte   $1                  ;             storage type (standard)
     .word   $0                  ;             creation date
     .word   $0                  ;             creation time
-
-write_params:
-    .byte   $4
-    .byte   $0                  ;             reference number
-    .word   MAPSHEET            ; *OVERWRITE* address of data buffer
-    .word   MAPSHEET_SIZE       ;             number of bytes to write
-    .word   $0                  ;             number of bytes written
 
 close_params:
     .byte   $1
@@ -1249,18 +1242,20 @@ interface_7x8:
 
 .align 256
 
+; Calculate size of tilesheet
+TILESHEET_7X8_SIZE = TILESHEET_7X8_END - TILESHEET_7X8
+
+TILESHEET_7X8:
+.include "tileSheet_fatfont_7x8.asm"
+TILESHEET_7X8_END:
+
+
 ; Calculate size of tilesheets
-TILESHEET_SIZE = TILESHEET_END - TILESHEET
+TILESHEET_14X16_SIZE = TILESHEET_14X16_END - TILESHEET_14X16
 
-; Start of tilesheet
-TILESHEET:
-
-.include "tileSheet_7x8.asm"
-
-.include "tileSheet_14x16.asm"
-
-; End of tilesheet
-TILESHEET_END:
+TILESHEET_14X16:
+.include "tileSheet_background_14x16.asm"
+TILESHEET_14X16_END:
 
 ; Include a "cursor" tile for map edit after the user tiles
     ; 14x16 Cursor

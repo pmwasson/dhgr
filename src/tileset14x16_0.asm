@@ -10,6 +10,4 @@
 
 MAX_TILES = 64
 
-.include "tileSheet_7x8.asm"
-
-.include "tileSheet_14x16.asm"
+.include "tileSheet_background_14x16.asm"

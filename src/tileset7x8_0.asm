@@ -6,14 +6,4 @@
 
 .org    $6000
 
-.align 256
-
-sample1_7x8:
-
-.include "tileSheet_dialog_7x8.asm"
-
-; Characters + masks
-sample1_14x16:
-
-.include "tileSheet_characters_14x16.asm"
-
+.include "tileSheet_fatfont_7x8.asm"

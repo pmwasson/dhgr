@@ -23,9 +23,13 @@ cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\game.asm apple2.lib  -o game.apple
 ::---------------------------------------------------------------------------
 :: Compile example
 ::---------------------------------------------------------------------------
-cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset0.asm apple2.lib  -o tileset0.apple2 -C ..\src\start6000.cfg
-cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset1.asm apple2.lib  -o tileset1.apple2 -C ..\src\start6000.cfg
-cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\map0.asm     apple2.lib  -o map0.apple2     -C ..\src\start6000.cfg
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset14x16_0.asm apple2.lib  -o tileset14x16_0.apple2 -C ..\src\start6000.cfg
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset14x16_1.asm apple2.lib  -o tileset14x16_1.apple2 -C ..\src\start6000.cfg
+
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset7x8_0.asm apple2.lib  -o tileset7x8_0.apple2 -C ..\src\start6000.cfg
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\tileset7x8_1.asm apple2.lib  -o tileset7x8_1.apple2 -C ..\src\start6000.cfg
+
+cl65 -I ..\src -t apple2 -u __EXEHDR__ ..\src\map_0.asm     apple2.lib  -o map_0.apple2     -C ..\src\start6000.cfg
 
 ::---------------------------------------------------------------------------
 :: Build disk 
@@ -36,7 +40,7 @@ copy ..\disk\template_prodos.dsk dhgr_prodos.dsk
 
 :: Put boot program first
 
-:: Play
+:: Game
 java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk game.system sys < C:\cc65\target\apple2\util\loader.system
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk game bin < game.apple2 
 
@@ -45,20 +49,22 @@ java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk dhgr.system sys < C:\cc6
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk dhgr bin < dhgr.apple2 
 
 :: Engine
-java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk engine.system sys < C:\cc65\target\apple2\util\loader.system
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk engine bin < engine.apple2 
+::java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk engine.system sys < C:\cc65\target\apple2\util\loader.system
+::java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk engine bin < engine.apple2 
 
 :: Play
-java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk play.system sys < C:\cc65\target\apple2\util\loader.system
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk play bin < play.apple2 
+::java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk play.system sys < C:\cc65\target\apple2\util\loader.system
+::java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk play bin < play.apple2 
 
 :: Throw on basic
 java -jar C:\jar\AppleCommander.jar -p dhgr_prodos.dsk basic.system sys < ..\disk\BASIC.SYSTEM 
 
 :: Add samples
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset0 bin < tileset0.apple2 
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset1 bin < tileset1.apple2 
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk map0 bin < map0.apple2 
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset14x16.0 bin < tileset14x16_0.apple2 
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset14x16.1 bin < tileset14x16_1.apple2 
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset7x8.0 bin < tileset7x8_0.apple2 
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk tileset7x8.1 bin < tileset7x8_1.apple2 
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk map.0 bin < map_0.apple2 
 
 :: Copy results out of the build directory
 copy dhgr_prodos.dsk ..\disk

@@ -284,14 +284,6 @@ pan_down:
     jsr     inline_print
     .byte   "Monitor",13,"(enter CTRL-Y to return)",13,0
 
-    jsr     inline_print
-    .byte   "Tilesheet address = $",0
-    ldx     #<TILESHEET
-    ldy     #>TILESHEET
-    jsr     PRINTXY
-    lda     #13
-    jsr     COUT
-
     ; Set ctrl-y vector
     lda     #$4c        ; JMP
     sta     $3f8
@@ -1110,15 +1102,15 @@ dumpCount: .byte   0
 
     ; set address
     lda     #<MAPSHEET
-    sta     read_params+2
+    sta     rw_params+2
     lda     #>MAPSHEET
-    sta     read_params+3
+    sta     rw_params+3
 
     ; set size
     lda     #<MAPSHEET_SIZE
-    sta     read_params+4
+    sta     rw_params+4
     lda     #>MAPSHEET_SIZE
-    sta     read_params+5
+    sta     rw_params+5
 
     jmp     loadData    ; link return
 
@@ -1153,15 +1145,15 @@ dumpCount: .byte   0
 
     ; set address
     lda     #<MAPSHEET
-    sta     write_params+2
+    sta     rw_params+2
     lda     #>MAPSHEET
-    sta     write_params+3
+    sta     rw_params+3
 
     ; set size
     lda     #<MAPSHEET_SIZE
-    sta     write_params+4
+    sta     rw_params+4
     lda     #>MAPSHEET_SIZE
-    sta     write_params+5
+    sta     rw_params+5
 
     jmp     saveData    ; link return
 
@@ -1199,7 +1191,7 @@ quickBar:           .byte   0,1,2,3,4,5,6,7,8,9
 ; ProDos pathname
 
 pathname:
-    .byte   10,"/DHGR/MAP0"
+    StringLen "/DHGR/MAP.0"
 pathname_end:
 
 ;------------------------------------------------

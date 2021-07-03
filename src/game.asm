@@ -60,6 +60,8 @@
     StringCR "Loading game assets..."
 
 
+    ldx     #assetFont
+    jsr     loadAsset
     ldx     #assetBG
     jsr     loadAsset
     ldx     #assetFG
@@ -273,22 +275,26 @@ close_params:
     .byte   $0                  ;             reference number
 
 
+fileTypeFont:   String "Font Tileset"
 fileTypeBG:     String "Background Tileset"
 fileTypeFG:     String "Foreground Tileset"
 fileTypeMap:    String "Map"
 
-fileNameBG:     StringLen "/DHGR/TILESET0"
-fileNameFG:     StringLen "/DHGR/TILESET1"
-fileNameMap:    StringLen "/DHGR/MAP0"
+fileNameFont:   StringLen "/DHGR/TILESET7X8.0"
+fileNameBG:     StringLen "/DHGR/TILESET14X16.0"
+fileNameFG:     StringLen "/DHGR/TILESET14X16.1"
+fileNameMap:    StringLen "/DHGR/MAP.0"
 
 fileDescription:    ; type, name, address, size
-    .word   fileTypeBG,     fileNameBG,     READBUFFER,128*64     ; 0  = background
-    .word   fileTypeFG,     fileNameFG,     READBUFFER,128*64     ; 8  = foreground
-    .word   fileTypeMap,    fileNameMap,    READBUFFER,64*64      ; 16 = map
+    .word   fileTypeFont,   fileNameFont,   READBUFFER,32*64      ; 0
+    .word   fileTypeBG,     fileNameBG,     READBUFFER,128*64     ; 8
+    .word   fileTypeFG,     fileNameFG,     READBUFFER,128*64     ; 16
+    .word   fileTypeMap,    fileNameMap,    READBUFFER,64*64      ; 24
 
-assetBG     =   8*0
-assetFG     =   8*1
-assetMap    =   8*2
+assetFont   =   8*0
+assetBG     =   8*1
+assetFG     =   8*2
+assetMap    =   8*3
 
 ;-----------------------------------------------------------------------------
 ; Utilies

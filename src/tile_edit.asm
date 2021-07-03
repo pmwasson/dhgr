@@ -465,14 +465,6 @@ save_exit:
     jsr     inline_print
     .byte   "Monitor",13,"(enter CTRL-Y to return)",13,0
 
-    jsr     inline_print
-    .byte   "Tilesheet address = $",0
-    ldx     #<TILESHEET
-    ldy     #>TILESHEET
-    jsr     PRINTXY
-    lda     #13
-    jsr     COUT
-
     ; Set ctrl-y vector
     lda     #$4c        ; JMP
     sta     $3f8
@@ -2349,37 +2341,94 @@ temp:       .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Set file params
+;
+;   A = file number
+;-----------------------------------------------------------------------------
+.proc setFileParams
+
+    ldy     size
+    bne     path_14x16
+
+    ; set filename for 7x8
+    ;--------------------------
+    clc
+    adc     #'0'
+    sta     pathname_7x8_end-1
+
+    ; set pathname for 7x8
+    lda     #<pathname_7x8
+    sta     open_params+1
+    sta     create_params+1
+    sta     stringPtr0
+    lda     #>pathname_7x8
+    sta     open_params+2
+    sta     create_params+2
+    sta     stringPtr1
+
+    ; set address
+    lda     #<TILESHEET_7X8
+    sta     rw_params+2
+    lda     #>TILESHEET_7X8
+    sta     rw_params+3
+
+    ; set size
+    lda     #<TILESHEET_7X8_SIZE
+    sta     rw_params+4
+    lda     #>TILESHEET_7X8_SIZE
+    sta     rw_params+5
+
+    jmp     exit
+
+path_14x16:
+
+    ; set filename for 14x16
+    ;--------------------------
+    clc
+    adc     #'0'
+    sta     pathname_14x16_end-1
+
+    ; set pathname for 14x16
+    lda     #<pathname_14x16
+    sta     open_params+1
+    sta     create_params+1
+    sta     stringPtr0
+    lda     #>pathname_14x16
+    sta     open_params+2
+    sta     create_params+2
+    sta     stringPtr1
+
+    ; set address
+    lda     #<TILESHEET_14X16
+    sta     rw_params+2
+    lda     #>TILESHEET_14X16
+    sta     rw_params+3
+
+    ; set size
+    lda     #<TILESHEET_14X16_SIZE
+    sta     rw_params+4
+    lda     #>TILESHEET_14X16_SIZE
+    sta     rw_params+5
+
+exit:
+    lda     #':' + $80
+    jsr     COUT
+    jsr     print_length
+    lda     #13
+    jsr     COUT
+
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
 ; Load sheet
 ;
 ;   Load sheet using ProDOS
 ;-----------------------------------------------------------------------------
 .proc loadSheet
 
-    ; set filename
-    clc
-    adc     #'0'
-    sta     pathname_end-1
-
-    lda     #13
-    jsr     COUT
-
-    ; set pathname
-    lda     #<pathname
-    sta     open_params+1
-    lda     #>pathname
-    sta     open_params+2
-
-    ; set address
-    lda     #<TILESHEET
-    sta     read_params+2
-    lda     #>TILESHEET
-    sta     read_params+3
-
-    ; set size
-    lda     #<TILESHEET_SIZE
-    sta     read_params+4
-    lda     #>TILESHEET_SIZE
-    sta     read_params+5
+    jsr     setFileParams
 
     jmp     loadData    ; link return
 
@@ -2394,37 +2443,7 @@ temp:       .byte   0
 ;-----------------------------------------------------------------------------
 .proc saveSheet
 
-    ; set filename
-    clc
-    adc     #'0'
-    sta     pathname_end-1
-
-    lda     #13
-    jsr     COUT
-
-    ; set pathname (open)
-    lda     #<pathname
-    sta     open_params+1
-    lda     #>pathname
-    sta     open_params+2
-
-    ; set pathname (create)
-    lda     #<pathname
-    sta     create_params+1
-    lda     #>pathname
-    sta     create_params+2
-
-    ; set address
-    lda     #<TILESHEET
-    sta     write_params+2
-    lda     #>TILESHEET
-    sta     write_params+3
-
-    ; set size
-    lda     #<TILESHEET_SIZE
-    sta     write_params+4
-    lda     #>TILESHEET_SIZE
-    sta     write_params+5
+    jsr     setFileParams
 
     jmp     saveData    ; link return
 
@@ -2474,9 +2493,13 @@ clipboardData:
 
 ; ProDos pathname
 
-pathname:
-    .byte   14,"/DHGR/TILESET0"
-pathname_end:
+pathname_14x16:
+    StringLen "/DHGR/TILESET14X16.0"
+pathname_14x16_end:
+
+pathname_7x8:
+    StringLen "/DHGR/TILESET7X8.0"
+pathname_7x8_end:
 
 
 ; Lookup tables
