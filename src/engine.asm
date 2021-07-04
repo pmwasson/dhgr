@@ -1,34 +1,7 @@
 ;-----------------------------------------------------------------------------
 ; Paul Wasson - 2021
 ;-----------------------------------------------------------------------------
-; DHGR Toolbox -- Play
-;  Game engine for DHGR maps and tiles
-
-; Proposed memory map
-;------------------------------------------------
-;
-;               Main                Aux
-;
-;   0000-0BFF   [ System usage / text pages     ]
-;
-;   0C00-0DFF   [ ProDos buffer ][ Unused       ]
-;
-;   0E00-1FFF   [ Engine routines               ]
-;
-;   2000-3FFF   [ DGHR Page 1                   ]
-;
-;   4000-5FFF   [ DGHR Page 2                   ]
-;               [ Read data     ]
-;
-;   6000-7FFF   [ Game program  ][ Map 64x64x2  ]
-;   8000-8FFF   [ Game program  ][ Dialog       ]
-;   
-;   9000-9FFF   [ Background Tiles (64)         ]
-;
-;   A000-AFFF   [ Foreground Tiles + Masks (32) ]
-;
-;   B000-B7FF   [ Font Tiles (128)              ]
-;
+;  Game engine
 
 ;------------------------------------------------
 ; Constants

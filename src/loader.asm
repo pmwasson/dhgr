@@ -1,8 +1,13 @@
 ;-----------------------------------------------------------------------------
 ; Paul Wasson - 2021
 ;-----------------------------------------------------------------------------
-; DHGR Toolbox -- Game
-;  Game engine for DHGR maps and tiles
+; Loader
+;
+;   Load game assets and install them into proper memory location
+;   which could either be main, auxiliary or both.
+
+.include "defines.asm"
+.include "macros.asm"
 
 ; Proposed memory map (may change)
 ;------------------------------------------------
@@ -30,12 +35,38 @@
 ;   B000-B7FF   [ Font Tiles (128)              ]
 ;
 
+; If run out of room, could put loader at $2000
+
+READBUFFER      :=  $4000    ; Share read buffer with page2
+
+MAPSTART        :=  $6000
+MAPLENGTH       =   64*64
+MAPEND          :=  READBUFFER + MAPLENGTH - 1
+
+DIALOGSTART     :=  $8000
+DIALOGLENGTH    =   $1000
+DIALOGEND       :=  READBUFFER + DIALOGLENGTH - 1
+
+BGSTART         :=  $9000
+BGLENGTH        =   128*64
+BGEND           :=  READBUFFER + BGLENGTH - 1
+
+FGSTART         :=  $A000
+FGLENGTH        =   128*64
+FGEND           :=  READBUFFER + FGLENGTH - 1
+
+FONTSTART       :=  $B000
+FONTLENGTH      =   32*64
+FONTEND         :=  READBUFFER + FONTLENGTH - 1
+
 ;------------------------------------------------
 ; Constants
 ;------------------------------------------------
 
-.include "defines.asm"
-.include "macros.asm"
+INSTALL_MAIN    = 0     ; Main memory
+INSTALL_AUX     = 1     ; Aux memory
+INSTALL_AUX_I2  = 2     ; Aux memory, interleave of 2
+INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
 
 ;------------------------------------------------
 ; Constants
@@ -44,7 +75,7 @@
 ;------------------------------------------------
 
 .segment "CODE"
-.org    $6000
+.org    $2000
 
 ;=============================================================================
 ; Main program
@@ -73,7 +104,6 @@
     ; Exit to monitor
     jsr    inline_print
     StringCR "Press any key to exit"
-
 
 :
     lda     KBD
@@ -157,14 +187,18 @@ quit_params:
 
 .proc loadAsset
     
+    stx     assetNum
+
     lda     fileDescription+0,x
     sta     stringPtr0
     lda     fileDescription+1,x
     sta     stringPtr1
     jsr     print
 
-    lda     #':' + $80
-    jsr     COUT
+    jsr    inline_print
+    .byte  ":",13,"  ",0   
+
+    ldx     assetNum
 
     ; set pathname
     lda     fileDescription+2,x
@@ -185,9 +219,74 @@ quit_params:
     sta     read_params+5
 
 
-    jsr     loadData    ; link return
+    jsr     loadData
+
+    jsr     inline_print
+    String "  Installing data to location "   
+
+    ldx     assetNum
+    lda     fileDescription+12,x
+    bne     :+
+
+    ; INSTALL_MAIN
+
+    jsr     inline_print
+    String "(main) $"
+
+    jmp     cont
+:
+
+    cmp     #INSTALL_AUX
+    bne     :+
+
+    jsr     inline_print
+    String "(aux) $"
+
+    jmp     cont
+:
+
+    ; INSTALL_AUX_I*
+    jsr     inline_print
+    String "(main/aux) $"
+
+cont:
+    ldx     assetNum
+    lda     fileDescription+10,x
+    ldy     fileDescription+11,x
+    tax
+    jsr     PRINTXY
+    lda     #13
+    jsr     COUT
+
+    ldx     assetNum
+
+    ; Move data to final location
+    ; Printing seems to wipe out A1/A2, so set right before copy
+
+    ; start
+    lda     fileDescription+4,x
+    sta     A1
+    lda     fileDescription+5,x
+    sta     A1+1
+
+    ; end
+    lda     fileDescription+8,x
+    sta     A2
+    lda     fileDescription+9,x
+    sta     A2+1
+
+    ; destination (aux)
+    lda     fileDescription+10,x       
+    sta     A4
+    lda     fileDescription+11,x
+    sta     A4+1
+
+    sec                     ; copy from main to aux
+    jsr     AUXMOVE
 
     rts
+
+assetNum:   .byte   0
 
 .endproc
 
@@ -275,29 +374,37 @@ close_params:
     .byte   $0                  ;             reference number
 
 
+;-----------------------------------------------------------------------------
+; Assets
+
+; Asset type
 fileTypeFont:   String "Font Tileset"
 fileTypeBG:     String "Background Tileset"
 fileTypeFG:     String "Foreground Tileset"
 fileTypeMap:    String "Map"
 
+; File names
 fileNameFont:   StringLen "/DHGR/TILESET7X8.0"
 fileNameBG:     StringLen "/DHGR/TILESET14X16.0"
 fileNameFG:     StringLen "/DHGR/TILESET14X16.1"
 fileNameMap:    StringLen "/DHGR/MAP.0"
 
-fileDescription:    ; type, name, address, size
-    .word   fileTypeFont,   fileNameFont,   READBUFFER,32*64      ; 0
-    .word   fileTypeBG,     fileNameBG,     READBUFFER,128*64     ; 8
-    .word   fileTypeFG,     fileNameFG,     READBUFFER,128*64     ; 16
-    .word   fileTypeMap,    fileNameMap,    READBUFFER,64*64      ; 24
+; Asset List
+fileDescription:    ; type, name, address, size, dest, interleave
+    ;       TYPE            NAME            BUFFER      LENGTH      END         DEST        MODE            UNUSED OFFSET
+    ;       0               2               4           6           8           10          12              14 
+    ;       --------------- --------------- ----------- ----------- ----------- ----------- --------------- ------ -------
+    .word   fileTypeFont,   fileNameFont,   READBUFFER, FONTLENGTH, FONTEND,    FONTSTART,  INSTALL_AUX_I2, 0      ; 0
+    .word   fileTypeBG,     fileNameBG,     READBUFFER, BGLENGTH,   BGEND,      BGSTART,    INSTALL_AUX_I4, 0      ; 16
+    .word   fileTypeFG,     fileNameFG,     READBUFFER, FGLENGTH,   FGEND,      FGSTART,    INSTALL_AUX_I4, 0      ; 32
+    .word   fileTypeMap,    fileNameMap,    READBUFFER, MAPLENGTH,  MAPEND,     MAPSTART,   INSTALL_AUX,    0      ; 48
 
-assetFont   =   8*0
-assetBG     =   8*1
-assetFG     =   8*2
-assetMap    =   8*3
+assetFont   =   16*0
+assetBG     =   16*1
+assetFG     =   16*2
+assetMap    =   16*3
 
 ;-----------------------------------------------------------------------------
 ; Utilies
 
 .include "inline_print.asm"
-.include "sounds.asm"

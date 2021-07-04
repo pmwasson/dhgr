@@ -65,7 +65,6 @@ invMask         :=  $ee
 FILEBUFFER      := $800   	; User PRODOS filebuffer, 512 bytes
 HGRPAGE1        := $2000
 HGRPAGE2        := $4000
-READBUFFER 		:= $4000 	; Share read buffer with page2
 
 ; Soft switches
 ;---------------------------------------------------------
