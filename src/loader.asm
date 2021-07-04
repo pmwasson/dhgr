@@ -64,7 +64,10 @@ FONTEND         :=  READBUFFER + FONTLENGTH - 1
 FONTI2END       :=  FONTSTART + FONTLENGTH/2 - 1
 
 ENGINESTART     :=  $C00
-ENGINELENGTH    =   $1410 - ENGINESTART
+ENGINELENGTH    =   $2000 - ENGINESTART
+
+GAMESTART       :=  $6000
+GAMELENGTH      =   $9000 - ENGINESTART
 
 ;------------------------------------------------
 ; Constants
@@ -109,7 +112,7 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
     ldx     #assetEngine
     jsr     loadAsset
 
-    jsr    inline_print
+    jsr     inline_print
     StringCR "Press any to jump to engine"
 
 :
@@ -117,6 +120,14 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
     bpl     :-
     sta     KBDSTRB
 
+    cmp     #KEY_ESC
+    bne     :+
+
+    jsr     inline_print
+    StringCR "ESC key press, exiting"
+    jmp     monitor
+
+:
     ; Point to loaded assets
     lda     #<BGSTART
     sta     ENGINESTART+$10
@@ -424,7 +435,7 @@ copyLoop4A:
 
     ; check if buffer full
     cpx     #0
-    bne     copyLoop2A
+    bne     copyLoop4A
 
     jsr     moveCopyBuffer
 

@@ -23,9 +23,9 @@
 
 ; Variables (in fixed locations)
 .align 16
-bgSheet_14x16:  .word   sheet_bg_14x16
-fgSheet_14x16:  .word   sheet_fg_14x16
-bgSheet_7x8:    .word   sheet_bg_7x8
+bgSheet_14x16:  .word   $9000
+fgSheet_14x16:  .word   $A000
+bgSheet_7x8:    .word   $B000
 
 ;-----------------------------------------------------------------------------
 ; drawInit
@@ -70,6 +70,128 @@ auxMemStart:
 ;-----------------------------------------------------------------------------
 
 .proc drawTile_14x16
+
+    sta     CLR80COL        ; Use RAMWRT for aux mem
+
+    lda     bgTile
+    ror                     ; *64
+    ror
+    ror
+    and     #$c0
+    sta     bgPtr0
+    sta     bgPtr0Copy
+
+    lda     bgTile
+    lsr
+    lsr
+    clc
+    adc     bgSheet_14x16+1
+    sta     bgPtr1
+
+    ; calculate screen pointer
+    ldx     tileY
+    lda     tileX
+    clc
+    adc     lineOffset,x    ; + lineOffset
+    sta     screenPtr0    
+    sta     screenPtr0Copy    
+    lda     linePage,x
+    adc     drawPage
+    sta     screenPtr1
+    sta     screenPtr1Copy    
+
+    ; draw half of tile in main mem
+    jsr     drawTile
+
+    ; restore tile pointers (page byte doesn't change)
+    lda     bgPtr0Copy
+    sta     bgPtr0
+
+    ; restore screen pointer
+    lda     screenPtr0Copy
+    sta     screenPtr0
+    lda     screenPtr1Copy
+    sta     screenPtr1
+
+    ; transfer to aux memory
+    sta     RAMWRTON  
+    sta     RAMRDON  
+
+    ; draw half of tile in aux mem
+    jsr     drawTile    ; AUX
+
+    sta     RAMWRTOFF   ; AUX
+    sta     RAMRDOFF    ; AUX
+
+    rts
+
+drawTile:
+
+    ldx     #16             ; 8 lines
+
+drawLoop:
+    ldy     #0
+    lda     (bgPtr0),y
+    sta     (screenPtr0),y
+    ldy     #1
+    lda     (bgPtr0),y
+    sta     (screenPtr0),y
+    ldy     #2
+    lda     (bgPtr0),y
+    sta     (screenPtr0),y
+    ldy     #3
+    lda     (bgPtr0),y
+    sta     (screenPtr0),y
+
+    ; Add 4 to tile pointers
+    ; assumes aligned such that there are no page crossing
+    clc
+    lda     bgPtr0
+    adc     #4
+    sta     bgPtr0
+
+    ; Go to next line
+
+    lda     screenPtr1
+    adc     #4
+    sta     screenPtr1
+
+    dex
+    beq     done            ; did 16 lines
+
+    cpx     #8              ; after 8 lines, adjust screen pointer
+    bne     drawLoop
+
+    ; move to second half
+    lda     screenPtr0
+    clc
+    adc     #$80
+    sta     screenPtr0
+    lda     screenPtr1
+    sbc     #$1f            ; subtract 20 if no carry, 19 if carry
+    sta     screenPtr1
+    jmp     drawLoop
+
+done:
+    rts    
+
+; locals
+bgPtr0Copy:     .byte   0
+screenPtr0Copy: .byte   0
+screenPtr1Copy: .byte   0
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; draw tile foreground (14x16)
+;
+;   Draws a background tile anded with a mask and ored with a foreground
+;   tile.  It is assumed that the foreground tile comes first and the
+;   mask follows in aligned memory.
+;-----------------------------------------------------------------------------
+
+.proc drawTileFG_14x16
 
     sta     CLR80COL        ; Use RAMWRT for aux mem
 
@@ -396,31 +518,17 @@ linePage:
 ;-----------------------------------------------------------------------------
 .proc drawTest
 
-    jsr     $c300       ; 80 column mode
-    jsr     HOME        ; clear screen
-    lda     #23         ; put cursor on last line
-    sta     CV
-    jsr     VTAB
+    ; Set ctrl-y vector
+    lda     #$4c        ; JMP
+    sta     $3f8
+    lda     #<quit
+    sta     $3f9
+    lda     #>quit
+    sta     $3fa
 
     jsr     clearScreen
 
     jsr     drawInit    ; init code
-
-    ; copy code to aux memory
-    lda     #<tile_data_aux_start
-    sta     A1
-    lda     #>tile_data_aux_start
-    sta     A1+1
-    lda     #<tile_data_aux_end
-    sta     A2
-    lda     #>tile_data_aux_end
-    sta     A2+1
-    lda     #<tile_data_main_start
-    sta     A4
-    lda     #>tile_data_main_start
-    sta     A4+1
-    sec                     ; copy from main to aux
-    jsr     AUXMOVE
 
     ; init DHGR
     sta     TXTCLR      ; Graphics
@@ -430,22 +538,84 @@ linePage:
     sta     DHIRESON    ; Annunciator 2 On
     sta     SET80VID    ; 80 column on
 
-    lda     #0
+    ; test font
+
+    lda     #0    
     sta     bgTile
     sta     tileX
     sta     tileY
+
+:
     jsr     drawTile_7x8
-
-    inc     tileY
-    inc     tileY
-    lda     #0
-    sta     fgTile
-    jsr     drawTile_14x16
-
+    inc     tileX
+    inc     tileX
     inc     bgTile
+
+    lda     bgTile
+    and     #$0F
+    bne     :-
+
+    lda     #0
+    sta     tileX
     inc     tileY
-    inc     tileY
+
+    lda     tileY
+    cmp     #4
+    bne     :-
+
+    lda     #0
+    sta     bgTile
+
+
+:
     jsr     drawTile_14x16
+    inc     tileX
+    inc     tileX
+    inc     tileX
+    inc     tileX
+    inc     bgTile
+
+    lda     bgTile
+    and     #$07
+    bne     :-
+
+    lda     #0
+    sta     tileX
+    inc     tileY
+    inc     tileY
+
+    lda     tileY
+    cmp     #8
+    bne     :-
+
+
+    lda     #0
+    sta     bgTile
+    sta     fgTile
+
+:
+    jsr     drawTileFG_14x16
+    inc     tileX
+    inc     tileX
+    inc     tileX
+    inc     tileX
+    inc     bgTile
+    inc     fgTile
+
+    lda     bgTile
+    and     #$07
+    bne     :-
+
+    lda     #0
+    sta     tileX
+    inc     tileY
+    inc     tileY
+
+    lda     tileY
+    cmp     #12
+    bne     :-
+
+
 
     ; Exit to monitor
     jmp     MONZ        ; enter monitor
@@ -485,94 +655,22 @@ loop:
     rts
 .endproc
 
-
-
-.align 256
-; Test Tiles Main
 ;-----------------------------------------------------------------------------
-tile_data_main_start:
-
-sheet_bg_14x16:
-
-; Water - main
-.byte $66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19
-.byte $66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19
-.byte $66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19
-.byte $66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19,$66,$19
-
-; Grass 1 - main
-.byte $44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11
-.byte $44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$4C,$11,$44,$11
-.byte $44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11
-.byte $44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11,$44,$11
-
-.align 256
-
-sheet_fg_14x16:
-
-; Old-man right - main
-.byte $00,$00,$00,$00,$00,$6E,$01,$00,$00,$6E,$1B,$00,$00,$6E,$1B,$00
-.byte $00,$6E,$3B,$00,$00,$6E,$11,$00,$00,$6E,$1F,$00,$00,$7F,$1F,$00
-.byte $00,$7F,$1F,$00,$00,$55,$1F,$00,$00,$45,$01,$00,$00,$45,$01,$00
-.byte $00,$77,$01,$00,$00,$2A,$00,$00,$00,$2A,$08,$00,$00,$00,$00,$00
-
-; Old-man right (mask) - main
-.byte $7F,$00,$7E,$7F,$7F,$00,$60,$7F,$1F,$00,$00,$7F,$1F,$00,$00,$7F
-.byte $1F,$00,$00,$7F,$1F,$00,$00,$7F,$1F,$00,$00,$7F,$1F,$00,$00,$7F
-.byte $7F,$00,$00,$7F,$7F,$00,$00,$7F,$7F,$00,$60,$7F,$7F,$00,$60,$7F
-.byte $7F,$00,$60,$7F,$7F,$00,$60,$7F,$7F,$00,$00,$7F,$7F,$00,$60,$7F
-
-.align 256
-
-sheet_bg_7x8:
-
-; 7x8
-; A - main
-.byte $78,$00,$7F,$01,$1F,$07,$1F,$07,$7F,$07,$1F,$07,$1F,$07,$00,$00   
-
-tile_data_main_end:
-
-
-.align 256
-; Test Tiles Aux
+; Quit
+;
+;   Exit to ProDos
 ;-----------------------------------------------------------------------------
-tile_data_aux_start:
+.proc quit
 
-sheet_bg_14x16_aux:
+    jsr     MLI
+    .byte   CMD_QUIT
+    .word   quit_params
 
-; Water - aux
-.byte $33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C
-.byte $33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C
-.byte $33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C
-.byte $33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C,$33,$4C
+quit_params:
+    .byte   4               ; 4 parameters
+    .byte   0               ; 0 is the only quit type
+    .word   0               ; Reserved pointer for future use (what future?)
+    .byte   0               ; Reserved byte for future use (what future?)
+    .word   0               ; Reserved pointer for future use (what future?)
 
-; Grass 1 - aux
-.byte $22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$26,$08,$22,$08,$22,$08
-.byte $22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08
-.byte $22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$09
-.byte $22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08,$22,$08
-
-.align 256
-
-sheet_fg_14x16_aux:
-
-; Old-man right - aux
-.byte $00,$00,$00,$00,$00,$40,$5D,$00,$00,$7C,$5D,$00,$00,$7C,$3F,$00
-.byte $00,$7C,$5D,$03,$00,$7C,$0D,$00,$00,$7C,$5D,$00,$00,$7C,$7F,$00
-.byte $00,$00,$7F,$00,$00,$00,$7A,$00,$00,$00,$2A,$00,$00,$00,$58,$00
-.byte $00,$00,$6E,$00,$00,$40,$55,$00,$00,$40,$45,$00,$00,$00,$00,$00
-
-; Old-man right (mask) - aux
-.byte $7F,$3F,$00,$7F,$7F,$03,$00,$7F,$7F,$00,$00,$7C,$7F,$00,$00,$7C
-.byte $7F,$00,$00,$40,$7F,$00,$00,$7C,$7F,$00,$00,$7C,$7F,$00,$00,$7C
-.byte $7F,$03,$00,$7C,$7F,$03,$00,$7C,$7F,$03,$00,$7F,$7F,$03,$00,$7F
-.byte $7F,$03,$00,$7F,$7F,$03,$00,$7F,$7F,$03,$00,$7C,$7F,$3F,$00,$7F
-
-.align 256
-
-sheet_bg_7x8_aux:
-
-; A - aux
-.byte $00,$0F,$40,$7F,$70,$7C,$70,$7C,$70,$7F,$70,$7C,$70,$7C,$00,$00
-
-tile_data_aux_end:
+.endproc
