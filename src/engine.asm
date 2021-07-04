@@ -21,7 +21,7 @@
 
     ; room for 2 more
 
-; Variables (in filxed locations)
+; Variables (in fixed locations)
 .align 16
 bgSheet_14x16:  .word   sheet_bg_14x16
 fgSheet_14x16:  .word   sheet_fg_14x16

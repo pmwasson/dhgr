@@ -16,11 +16,14 @@
 ;
 ;   0000-0BFF   [ System usage / text pages     ]
 ;
-;   0C00-0DFF   [ ProDos buffer ][ Unused       ]
+;   0800-09FF   [ ProDos buffer ][ Unused       ]
 ;
-;   0E00-1FFF   [ Engine routines               ]
+;   0A00-0BFF   [ Unused                        ]
+;
+;   0C00-1FFF   [ Engine routines               ]
 ;
 ;   2000-3FFF   [ DGHR Page 1                   ]
+;               [ Loader        ]
 ;
 ;   4000-5FFF   [ DGHR Page 2                   ]
 ;               [ Read data     ]
@@ -34,8 +37,6 @@
 ;
 ;   B000-B7FF   [ Font Tiles (128)              ]
 ;
-
-; If run out of room, could put loader at $2000
 
 READBUFFER      :=  $4000    ; Share read buffer with page2
 
@@ -61,6 +62,9 @@ FONTSTART       :=  $B000
 FONTLENGTH      =   32*64
 FONTEND         :=  READBUFFER + FONTLENGTH - 1
 FONTI2END       :=  FONTSTART + FONTLENGTH/2 - 1
+
+ENGINESTART     :=  $C00
+ENGINELENGTH    =   $1410 - ENGINESTART
 
 ;------------------------------------------------
 ; Constants
@@ -102,19 +106,34 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
     jsr     loadAsset
     ldx     #assetMap
     jsr     loadAsset
+    ldx     #assetEngine
+    jsr     loadAsset
 
-
-    ; Exit to monitor
     jsr    inline_print
-    StringCR "Press any key to exit"
+    StringCR "Press any to jump to engine"
 
 :
     lda     KBD
     bpl     :-
     sta     KBDSTRB
 
-    jmp     monitor     ; no return!
+    ; Point to loaded assets
+    lda     #<BGSTART
+    sta     ENGINESTART+$10
+    lda     #>BGSTART
+    sta     ENGINESTART+$11
 
+    lda     #<FGSTART
+    sta     ENGINESTART+$12
+    lda     #>FGSTART
+    sta     ENGINESTART+$13
+
+    lda     #<FONTSTART
+    sta     ENGINESTART+$14
+    lda     #>FONTSTART
+    sta     ENGINESTART+$15
+
+    jmp     ENGINESTART
 
 .endproc
 
@@ -280,14 +299,14 @@ quit_params:
     jsr     printDest
 
     jsr     setCopyParam
-    jsr     interleaveCopy2A        ; FIXME
+    jsr     interleaveCopy4A
 
     jsr     setCopyParamInterleave
     sec
     jsr     AUXMOVE
 
     jsr     setCopyParam
-    jsr     interleaveCopy2B        ; FIXME
+    jsr     interleaveCopy4B
 
     rts
 
@@ -370,6 +389,94 @@ copyLoop2B:
     dec     copyLength
     bne     copyLoop2B
     rts
+
+interleaveCopy4A:
+    ldy     #0
+    ldx     #0
+
+copyLoop4A:
+    ; copy 4 bytes
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    ; skip 4 bytes
+    iny
+    iny
+    iny
+    iny
+    bne     copyLoop4A
+
+    ; inc source page
+    inc     A1+1
+
+    ; check if buffer full
+    cpx     #0
+    bne     copyLoop2A
+
+    jsr     moveCopyBuffer
+
+    ; check if done
+    dec     copyLength
+    bne     copyLoop4A
+
+    rts
+
+interleaveCopy4B:
+    ldy     #0
+    ldx     #0
+
+copyLoop4B:
+    ; skip 4 bytes
+    iny
+    iny
+    iny
+    iny
+    ; copy 4 bytes
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    lda     (A1),y
+    sta     copyBuffer,x
+    inx
+    iny
+    bne     copyLoop4B
+
+    ; inc source page
+    inc     A1+1
+
+    ; check if buffer full
+    cpx     #0
+    bne     copyLoop4B
+
+    jsr     moveCopyBuffer
+
+    ; check if done
+    dec     copyLength
+    bne     copyLoop4B
+    rts
+
 
 setCopyParam:
     ldx     assetNum
@@ -543,14 +650,14 @@ fileNameEngine: StringLen "/DHGR/ENGINE"
 
 ; Asset List
 fileDescription:    ; type, name, address, size, dest, interleave
-    ;       TYPE            NAME            BUFFER          LENGTH          END         STARTDEST   MODE            DESTEND (INT)   OFFSET
-    ;       0               2               4               6               8           10          12              14 
-    ;       --------------- --------------- -----------     -----------     ----------- ----------- --------------- --------------- -------
-    .word   fileTypeFont,   fileNameFont,   READBUFFER,     FONTLENGTH,     FONTEND,    FONTSTART,  INSTALL_AUX_I2, FONTI2END       ; 0
-    .word   fileTypeBG,     fileNameBG,     READBUFFER,     BGLENGTH,       BGEND,      BGSTART,    INSTALL_AUX_I4, BGI4END         ; 16
-    .word   fileTypeFG,     fileNameFG,     READBUFFER,     FGLENGTH,       FGEND,      FGSTART,    INSTALL_AUX_I4, FGI4END         ; 32
-    .word   fileTypeMap,    fileNameMap,    READBUFFER,     MAPLENGTH,      MAPEND,     MAPSTART,   INSTALL_AUX,    0               ; 48
-;    .word   fileTypeExe,    fileNameEngine, ENGINESTART,    ENGINELENGTH,   ENGINEEND,  0,          INSTALL_MAIN,   0               ; 64
+    ;       TYPE            NAME            BUFFER          LENGTH          END         STARTDEST       MODE            DESTEND (INT)   OFFSET
+    ;       0               2               4               6               8           10              12              14 
+    ;       --------------- --------------- -----------     -----------     ----------- -----------     --------------- --------------- -------
+    .word   fileTypeFont,   fileNameFont,   READBUFFER,     FONTLENGTH,     FONTEND,    FONTSTART,      INSTALL_AUX_I2, FONTI2END       ; 0
+    .word   fileTypeBG,     fileNameBG,     READBUFFER,     BGLENGTH,       BGEND,      BGSTART,        INSTALL_AUX_I4, BGI4END         ; 16
+    .word   fileTypeFG,     fileNameFG,     READBUFFER,     FGLENGTH,       FGEND,      FGSTART,        INSTALL_AUX_I4, FGI4END         ; 32
+    .word   fileTypeMap,    fileNameMap,    READBUFFER,     MAPLENGTH,      MAPEND,     MAPSTART,       INSTALL_AUX,    0               ; 48
+    .word   fileTypeExe,    fileNameEngine, ENGINESTART,    ENGINELENGTH,   0,          ENGINESTART,    INSTALL_MAIN,   0               ; 64
 
 assetFont   =   16*0
 assetBG     =   16*1
