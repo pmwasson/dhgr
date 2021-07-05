@@ -14,12 +14,12 @@
 .org    $C00
 
 ; Jump table (in fixed locations)
-    jmp     drawTest
+    jmp     drawTest            ; Remove once game calls engine
     jmp     drawInit
-    jmp     drawTile_14x16
     jmp     drawTile_7x8
+    jmp     drawTile_14x16
+    jmp     drawTileFG_14x16
 
-    ; room for 2 more
 
 ; Variables (in fixed locations)
 .align 16

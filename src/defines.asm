@@ -148,3 +148,16 @@ DIR_LEFT        =   0
 DIR_RIGHT       =   1
 DIR_UP          =   2
 DIR_DOWN        =   3
+
+
+; DHGR Engine
+;---------------------------------------------------------
+
+DHGR_INIT 				:= $C03
+DHGR_DRAW_7X8 			:= $C06
+DHGR_DRAW_14X16			:= $C09
+DHGR_DRAW_FG_14X16 		:= $C0C
+
+DHGR_BG_14X16 			:= $C10
+DHGR_FG_14X16 			:= $C12
+DHGR_BG_7X8 			:= $C14

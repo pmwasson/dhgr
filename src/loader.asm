@@ -58,16 +58,21 @@ FGLENGTH        =   128*64
 FGEND           :=  READBUFFER + FGLENGTH - 1
 FGI4END         :=  FGSTART + FGLENGTH/2 - 1
 
-FONTSTART       :=  $B000
-FONTLENGTH      =   32*64
-FONTEND         :=  READBUFFER + FONTLENGTH - 1
-FONTI2END       :=  FONTSTART + FONTLENGTH/2 - 1
+FONT1START      :=  $B000
+FONT1LENGTH     =   32*64
+FONT1END        :=  READBUFFER + FONT1LENGTH - 1
+FONT1I2END      :=  FONT1START + FONT1LENGTH/2 - 1
+
+FONT2START      :=  $B400
+FONT2LENGTH     =   32*64
+FONT2END        :=  READBUFFER + FONT2LENGTH - 1
+FONT2I2END      :=  FONT2START + FONT2LENGTH/2 - 1
 
 ENGINESTART     :=  $C00
 ENGINELENGTH    =   $2000 - ENGINESTART
 
 GAMESTART       :=  $6000
-GAMELENGTH      =   $9000 - ENGINESTART
+GAMELENGTH      =   $9000 - GAMESTART
 
 ;------------------------------------------------
 ; Constants
@@ -101,7 +106,9 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
     StringCR "Loading game assets..."
 
 
-    ldx     #assetFont
+    ldx     #assetFont1
+    jsr     loadAsset
+    ldx     #assetFont2
     jsr     loadAsset
     ldx     #assetBG
     jsr     loadAsset
@@ -111,9 +118,39 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
     jsr     loadAsset
     ldx     #assetEngine
     jsr     loadAsset
+    ldx     #assetGame
+    jsr     loadAsset
+
+    lda     fileError
+    beq     :+
 
     jsr     inline_print
-    StringCR "Press any to jump to engine"
+    StringCR "Error detected"
+    jmp     monitor
+
+:
+
+    ; Initialize engine
+
+    lda     #<BGSTART
+    sta     DHGR_BG_14X16
+    lda     #>BGSTART
+    sta     DHGR_BG_14X16+1
+
+    lda     #<FGSTART
+    sta     DHGR_FG_14X16
+    lda     #>FGSTART
+    sta     DHGR_FG_14X16+1
+
+    lda     #<FONT1START
+    sta     DHGR_BG_7X8
+    lda     #>FONT1START
+    sta     DHGR_BG_7X8+1
+
+    jsr     DHGR_INIT
+
+    jsr     inline_print
+    StringCR "Press any to launch game"
 
 :
     lda     KBD
@@ -128,23 +165,10 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
     jmp     monitor
 
 :
-    ; Point to loaded assets
-    lda     #<BGSTART
-    sta     ENGINESTART+$10
-    lda     #>BGSTART
-    sta     ENGINESTART+$11
 
-    lda     #<FGSTART
-    sta     ENGINESTART+$12
-    lda     #>FGSTART
-    sta     ENGINESTART+$13
+    ; Jump to game
 
-    lda     #<FONTSTART
-    sta     ENGINESTART+$14
-    lda     #>FONTSTART
-    sta     ENGINESTART+$15
-
-    jmp     ENGINESTART
+    jmp     GAMESTART
 
 .endproc
 
@@ -653,28 +677,34 @@ fileTypeMap:    String "Map"
 fileTypeExe:    String "Executable"
 
 ; File names
-fileNameFont:   StringLen "/DHGR/TILESET7X8.0"
+fileNameFont1:  StringLen "/DHGR/TILESET7X8.1"
+fileNameFont2:  StringLen "/DHGR/TILESET7X8.2"
 fileNameBG:     StringLen "/DHGR/TILESET14X16.0"
 fileNameFG:     StringLen "/DHGR/TILESET14X16.1"
 fileNameMap:    StringLen "/DHGR/MAP.0"
 fileNameEngine: StringLen "/DHGR/ENGINE"
+fileNameGame:   StringLen "/DHGR/GAME"
 
 ; Asset List
 fileDescription:    ; type, name, address, size, dest, interleave
     ;       TYPE            NAME            BUFFER          LENGTH          END         STARTDEST       MODE            DESTEND (INT)   OFFSET
     ;       0               2               4               6               8           10              12              14 
     ;       --------------- --------------- -----------     -----------     ----------- -----------     --------------- --------------- -------
-    .word   fileTypeFont,   fileNameFont,   READBUFFER,     FONTLENGTH,     FONTEND,    FONTSTART,      INSTALL_AUX_I2, FONTI2END       ; 0
-    .word   fileTypeBG,     fileNameBG,     READBUFFER,     BGLENGTH,       BGEND,      BGSTART,        INSTALL_AUX_I4, BGI4END         ; 16
-    .word   fileTypeFG,     fileNameFG,     READBUFFER,     FGLENGTH,       FGEND,      FGSTART,        INSTALL_AUX_I4, FGI4END         ; 32
-    .word   fileTypeMap,    fileNameMap,    READBUFFER,     MAPLENGTH,      MAPEND,     MAPSTART,       INSTALL_AUX,    0               ; 48
-    .word   fileTypeExe,    fileNameEngine, ENGINESTART,    ENGINELENGTH,   0,          ENGINESTART,    INSTALL_MAIN,   0               ; 64
+    .word   fileTypeFont,   fileNameFont1,  READBUFFER,     FONT1LENGTH,    FONT1END,   FONT1START,     INSTALL_AUX_I2, FONT1I2END      ; 0
+    .word   fileTypeFont,   fileNameFont2,  READBUFFER,     FONT2LENGTH,    FONT2END,   FONT2START,     INSTALL_AUX_I2, FONT2I2END      ; 16
+    .word   fileTypeBG,     fileNameBG,     READBUFFER,     BGLENGTH,       BGEND,      BGSTART,        INSTALL_AUX_I4, BGI4END         ; 32
+    .word   fileTypeFG,     fileNameFG,     READBUFFER,     FGLENGTH,       FGEND,      FGSTART,        INSTALL_AUX_I4, FGI4END         ; 48
+    .word   fileTypeMap,    fileNameMap,    READBUFFER,     MAPLENGTH,      MAPEND,     MAPSTART,       INSTALL_AUX,    0               ; 64
+    .word   fileTypeExe,    fileNameEngine, ENGINESTART,    ENGINELENGTH,   0,          ENGINESTART,    INSTALL_MAIN,   0               ; 80
+    .word   fileTypeExe,    fileNameGame,   GAMESTART,      GAMELENGTH,     0,          GAMESTART,      INSTALL_MAIN,   0               ; 96
 
-assetFont   =   16*0
-assetBG     =   16*1
-assetFG     =   16*2
-assetMap    =   16*3
-assetEngine =   16*4
+assetFont1  =   16*0
+assetFont2  =   16*1
+assetBG     =   16*2
+assetFG     =   16*3
+assetMap    =   16*4
+assetEngine =   16*5
+assetGame   =   16*6
 
 ;-----------------------------------------------------------------------------
 ; Utilies
