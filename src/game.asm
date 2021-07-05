@@ -15,26 +15,26 @@
 ; Constants
 ;------------------------------------------------
 
-BOX_HORZ        = $40
-BOX_VERT        = $41
-BOX_UPPER_LEFT  = $42
-BOX_UPPER_RIGHT = $43
-BOX_LOWER_LEFT  = $44
-BOX_LOWER_RIGHT = $45
-BOX_RIGHT_TEE   = $46
+BOX_HORZ        = $40+0
+BOX_VERT        = $40+1
+BOX_UPPER_LEFT  = $40+2
+BOX_UPPER_RIGHT = $40+3
+BOX_LOWER_LEFT  = $40+4
+BOX_LOWER_RIGHT = $40+5
+BOX_RIGHT_TEE   = $40+6
 
-DIALOG_UL       = $47
-DIALOG_UP       = $48
-DIALOG_UR       = $49
-DIALOG_LF       = $50
-DIALOG_RT       = $51
-DIALOG_LL       = $52
-DIALOG_LO       = $53
-DIALOG_LR       = $54
-DIALOG_RS1      = $55
-DIALOG_RS2      = $56
-DIALOG_LS1      = $57
-DIALOG_LS2      = $58
+DIALOG_UL       = $40+7
+DIALOG_UP       = $40+8
+DIALOG_UR       = $40+9
+DIALOG_LF       = $40+10
+DIALOG_RT       = $40+11
+DIALOG_LL       = $40+12
+DIALOG_LO       = $40+13
+DIALOG_LR       = $40+14
+DIALOG_RS1      = $40+15
+DIALOG_RS2      = $40+16
+DIALOG_LS1      = $40+17
+DIALOG_LS2      = $40+18
 
 MAP_WIDTH           =  64
 MAP_HEIGHT          =  64
