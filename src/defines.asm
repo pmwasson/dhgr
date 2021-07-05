@@ -52,12 +52,14 @@ bgTile          :=  $1d
 fgTile          :=  $1e
 tileX           :=  $e3
 tileY           :=  $e8
+mapWindowX 		:=  $ef
+mapWindowY 		:=  $fa
 
 ; Modes
 drawPage        :=  $d7
 invMask         :=  $ee
 
-; Available: ef,fa,fb,fc,fd
+; Available: fb,fc,fd
 ; Can probably reuse more since not planning on support dos3.3
 
 ; Memory map
@@ -157,7 +159,8 @@ DHGR_INIT 				:= $C03
 DHGR_DRAW_7X8 			:= $C06
 DHGR_DRAW_14X16			:= $C09
 DHGR_DRAW_FG_14X16 		:= $C0C
+DHGR_READ_MAP 	 		:= $C0F
 
-DHGR_BG_14X16 			:= $C10
-DHGR_FG_14X16 			:= $C12
-DHGR_BG_7X8 			:= $C14
+DHGR_BG_14X16 			:= $C20
+DHGR_FG_14X16 			:= $C22
+DHGR_BG_7X8 			:= $C24

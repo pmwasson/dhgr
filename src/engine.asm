@@ -19,13 +19,16 @@
     jmp     drawTile_7x8
     jmp     drawTile_14x16
     jmp     drawTileFG_14x16
-
+    jmp     readMap
 
 ; Variables (in fixed locations)
-.align 16
+.align 32
 bgSheet_14x16:  .word   $9000
 fgSheet_14x16:  .word   $A000
 bgSheet_7x8:    .word   $B000
+mapSheet:       .word   $6000
+mapWindowWidth: .byte   7
+mapWindowHeight:.byte   7
 
 ;-----------------------------------------------------------------------------
 ; drawInit
@@ -453,6 +456,85 @@ screenPtr1Copy: .byte   0
 
 .endproc
 
+
+;-----------------------------------------------------------------------------
+; readMap
+;   Copy the visible portion of the map into a buffer
+;
+;   This function will read from aux memory and write to main memory
+;-----------------------------------------------------------------------------
+
+.proc readMap
+
+    ; calc map pointer
+    lda     mapWindowY
+    lsr
+    lsr                 ; /4
+    clc
+    adc     mapSheet+1
+    sta     mapPtr1
+
+
+    lda     mapWindowY
+    ror                 ; * 64
+    ror
+    ror
+    and     #$c0
+    clc
+    adc     mapWindowX
+    sta     mapPtr0     ; assume 256 aligned
+
+
+    ; Loop over height x width
+    ; Use X as pointer into buffer
+    ; Use Y for indirect index
+
+    ldx     #0
+
+    lda     mapWindowHeight
+    sta     loopCountY
+
+loopy:
+    lda     mapWindowWidth
+    sta     loopCountX
+
+    ldy     #0
+
+loopx:
+
+    ; transfer to aux memory for read
+    sta     RAMRDON  
+    lda     (mapPtr0),y     ; AUX
+    sta     RAMRDOFF        ; AUX
+
+    sta     mapBuffer,x
+
+    iny
+    inx
+
+    dec     loopCountX
+    bne     loopx
+
+    ; move to next line
+    clc
+    lda     mapPtr0
+    adc     #64
+    sta     mapPtr0
+
+    lda     mapPtr1
+    adc     #0
+    sta     mapPtr1
+
+    dec     loopCountY
+    bne     loopy
+
+    rts
+
+loopCountX:     .byte   0
+loopCountY:     .byte   0
+
+.endproc
+
 auxMemEnd:
 
 ; Lookup tables
@@ -510,6 +592,9 @@ linePage:
     .byte   >$22D0
     .byte   >$2350
     .byte   >$23D0
+
+mapBuffer:
+    .res    7*7
 
 ;-----------------------------------------------------------------------------
 ; drawTest
