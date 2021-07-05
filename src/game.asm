@@ -74,7 +74,7 @@ MAP_CENTER          =   (3*7)+3
 
 
     ; set initial coordinates
-    lda     #0
+    lda     #(64-7)/2
     sta     mapWindowX
     sta     mapWindowY
     jsr     DHGR_READ_MAP
