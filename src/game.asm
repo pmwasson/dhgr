@@ -72,6 +72,12 @@ MAP_SCREEN_HEIGHT   =   7
     sta     drawPage
 
 
+    ; set initial coordinates
+    lda     #0
+    sta     mapWindowX
+    sta     mapWindowY
+
+
     ; set up dialog
 
     lda     #0
@@ -135,9 +141,9 @@ gameLoop:
 
     cmp     #KEY_UP
     bne     :+
-    lda     mapY
+    lda     mapWindowY
     beq     done_up
-    dec     mapY
+    dec     mapWindowY
 done_up:
     jmp     gameLoop
 
@@ -145,29 +151,29 @@ done_up:
  
     cmp     #KEY_DOWN
     bne     :+
-    lda     mapY
+    lda     mapWindowY
     cmp     #MAP_HEIGHT-MAP_SCREEN_HEIGHT
     beq     done_down
-    inc     mapY
+    inc     mapWindowY
 done_down:
     jmp     gameLoop
 :
 
     cmp     #KEY_LEFT
     bne     :+
-    lda     mapX
+    lda     mapWindowX
     beq     done_left
-    dec     mapX
+    dec     mapWindowX
 done_left:
     jmp     gameLoop
 :
 
     cmp     #KEY_RIGHT
     bne     :+
-    lda     mapX
+    lda     mapWindowX
     cmp     #MAP_WIDTH-MAP_SCREEN_WIDTH
     beq     done_right
-    inc     mapX
+    inc     mapWindowX
 done_right:
     jmp     gameLoop
 :
@@ -219,6 +225,7 @@ pageSelect:
     ; Draw map
     ;-------------------------------------------------------------------------
 
+    jsr     DHGR_READ_MAP
     jsr     drawMap
 
 
@@ -638,85 +645,62 @@ nextPage:   .byte   0
 .proc drawMap
 
     lda     #0
-    sta     indexY
+    sta     mapIndex
 
-loop_y:
-
-    ; set pointer
-    lda     mapY
-    clc
-    adc     indexY
-    sta     worldY
-    lsr
-    lsr     ; /4
-    clc
-    adc     #>MAPSHEET
-    sta     mapPtr1
-
-    lda     worldY
-    asl
-    asl
-    asl
-    asl
-    asl
-    asl                 ; * MAP_WIDTH (64)
-    sta     mapPtr0     ; assume 256 aligned
-
-    lda     #0
-    sta     indexX
-
-    lda     indexY
-    asl
-    adc     #MAP_Y_OFFSET
+    lda     #MAP_Y_OFFSET
     sta     tileY
 
-loop_x:
+loopy:
 
-    lda     indexX
-    asl
-    asl     ;*4
-    adc     #MAP_X_OFFSET
+    lda     #MAP_X_OFFSET
     sta     tileX
 
-    lda     mapX
-    clc
-    adc     indexX
-    tay
-    adc     worldY
+loopx:
+
+    ; Update animation index
+    clc 
+    lda     tileY
+    adc     tileX           ; x+y should never carry
     adc     animateTime
     and     #$F
     sta     animateIndex
-    lda     (mapPtr0),y
-    tax
-    ldy     animateTable,x      ; a = animation offst table base
+
+    ; Apply animation
+    ldy     mapIndex
+    lda     MAP_BUFFER,y        
+    tax                         ; x = tile
+    ldy     animateTable,x      ; y = animation offst table base
     beq     :+
     clc
     tya
     adc     animateIndex
-    tay
-    txa
+    tay                         ; y = animation delta
+    txa                         ; a = tile
     adc     animateOffset,y     ; add offset
-
  :
+
     sta     bgTile
     jsr     DHGR_DRAW_14X16
 
-    inc     indexX
-    lda     indexX
-    cmp     #MAP_SCREEN_WIDTH   
-    bne     loop_x
+    inc     mapIndex
 
-    inc     indexY
-    lda     indexY
-    cmp     #MAP_SCREEN_HEIGHT
-    bne     loop_y
+    lda     tileX
+    clc
+    adc     #4
+    sta     tileX
+    cmp     #MAP_X_OFFSET + MAP_SCREEN_WIDTH*4
+    bne     loopx
+
+    inc     tileY
+    inc     tileY
+    lda     tileY
+    cmp     #MAP_Y_OFFSET + MAP_SCREEN_HEIGHT*2
+    bne     loopy
 
     rts
 
-worldY:         .byte   0
-indexX:         .byte   0
-indexY:         .byte   0
 animateIndex:   .byte   0
+mapIndex:       .byte   0
 
 .endproc
 
@@ -751,9 +735,6 @@ quit_params:
 
 gameTime:           .byte   0
 animateTime:        .byte   0
-
-mapX:               .byte   0
-mapY:               .byte   0
 
 ; Box routine   
 boxLeft:            .byte   0
@@ -891,17 +872,3 @@ animateOffset:
     .byte   1
     .byte   0
     .byte   1
-
-;--------------------------------------------------------------------------
-
-.align 256
-
-MAPSHEET_SIZE = MAPSHEET_END - MAPSHEET
-
-MAPSHEET:
-.include "map_64x64.asm"
-MAPSHEET_END:
-
-    .dword  .time   ; Time of compilation
-
-;--------------------------------------------------------------------------

@@ -507,7 +507,7 @@ loopx:
     lda     (mapPtr0),y     ; AUX
     sta     RAMRDOFF        ; AUX
 
-    sta     mapBuffer,x
+    sta     MAP_BUFFER,x
 
     iny
     inx
@@ -592,9 +592,6 @@ linePage:
     .byte   >$22D0
     .byte   >$2350
     .byte   >$23D0
-
-mapBuffer:
-    .res    7*7
 
 ;-----------------------------------------------------------------------------
 ; drawTest
@@ -757,5 +754,6 @@ quit_params:
     .word   0               ; Reserved pointer for future use (what future?)
     .byte   0               ; Reserved byte for future use (what future?)
     .word   0               ; Reserved pointer for future use (what future?)
+
 
 .endproc
