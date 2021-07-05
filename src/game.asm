@@ -59,6 +59,13 @@ MAP_CENTER          =   (3*7)+3
 
     jsr     dhgrInit    ; Turn on dhgr
 
+    ; set up map
+    lda     #MAP_SCREEN_WIDTH
+    sta     DHGR_MAP_BUFFER_WIDTH
+
+    lda     #MAP_SCREEN_HEIGHT
+    sta     DHGR_MAP_BUFFER_HEIGHT
+
     lda     #$00        ; Clear both pages
     sta     drawPage        
     jsr     clearScreen
@@ -187,7 +194,7 @@ done_right:
     jmp     gameLoop
 
 
-dialog:     .byte   "DIALOG!",0
+dialog:     .byte   "EXPLORE!",0
 
 .endproc
 
