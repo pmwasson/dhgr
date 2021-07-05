@@ -43,6 +43,10 @@ MAP_Y_OFFSET        =   6   ; must be even
 MAP_SCREEN_WIDTH    =   7
 MAP_SCREEN_HEIGHT   =   7
 MAP_CENTER          =   (3*7)+3
+MAP_UP              =   MAP_CENTER-MAP_SCREEN_WIDTH
+MAP_DOWN            =   MAP_CENTER+MAP_SCREEN_WIDTH
+MAP_LEFT            =   MAP_CENTER-1
+MAP_RIGHT           =   MAP_CENTER+1
 
 ;------------------------------------------------
 
@@ -152,6 +156,10 @@ gameLoop:
     bne     :+
     lda     mapWindowY
     beq     done_up
+    ldy     MAP_BUFFER+MAP_UP
+    lda     bgInfoTable,y
+    and     #1
+    bne     done_up
     dec     mapWindowY
 done_up:
     jmp     gameLoop
@@ -163,6 +171,10 @@ done_up:
     lda     mapWindowY
     cmp     #MAP_HEIGHT-MAP_SCREEN_HEIGHT
     beq     done_down
+    ldy     MAP_BUFFER+MAP_DOWN
+    lda     bgInfoTable,y
+    and     #1
+    bne     done_down
     inc     mapWindowY
 done_down:
     jmp     gameLoop
@@ -174,6 +186,10 @@ done_down:
     sta     fgTile
     lda     mapWindowX
     beq     done_left
+    ldy     MAP_BUFFER+MAP_LEFT
+    lda     bgInfoTable,y
+    and     #1
+    bne     done_left
     dec     mapWindowX
 done_left:
     jmp     gameLoop
@@ -186,6 +202,10 @@ done_left:
     lda     mapWindowX
     cmp     #MAP_WIDTH-MAP_SCREEN_WIDTH
     beq     done_right
+    ldy     MAP_BUFFER+MAP_RIGHT
+    lda     bgInfoTable,y
+    and     #1
+    bne     done_right
     inc     mapWindowX
 done_right:
     jmp     gameLoop
@@ -689,13 +709,14 @@ loopx:
     ldy     mapIndex
     lda     MAP_BUFFER,y        
     tax                         ; x = tile
-    ldy     animateTable,x      ; y = animation offst table base
-    beq     :+
+    ldy     bgInfoTable,x      ; y = animation offst table base
+    bpl     :+
     clc
     tya
+    and     #$70
     adc     animateIndex
-    tay                         ; y = animation delta
-    txa                         ; a = tile
+    tay                         
+    txa                         
     adc     animateOffset,y     ; add offset
  :
 
@@ -783,73 +804,79 @@ dialogTop:          .byte   0
 dialogX:            .byte   0
 dialogDir:          .byte   0
 
-animateTable:
-; Animation offset table for each tile
-    .byte   $00     ; 00
-    .byte   $00     ; 01
-    .byte   $00     ; 02
-    .byte   $00     ; 03
-    .byte   $00     ; 04
-    .byte   $00     ; 05
-    .byte   $00     ; 06
-    .byte   $00     ; 07
-    .byte   $00     ; 08
-    .byte   $00     ; 09
-    .byte   $00     ; 0a
-    .byte   $00     ; 0b
-    .byte   $00     ; 0c
-    .byte   $00     ; 0d
-    .byte   $00     ; 0e
-    .byte   $00     ; 0f
-    .byte   $00     ; 10
-    .byte   $00     ; 11
-    .byte   $10     ; 12 - water
-    .byte   $00     ; 13
-    .byte   $00     ; 14
-    .byte   $10     ; 15 - pond rock
-    .byte   $00     ; 16
-    .byte   $00     ; 17
-    .byte   $00     ; 18
-    .byte   $00     ; 19
-    .byte   $00     ; 1a
-    .byte   $00     ; 1b
-    .byte   $00     ; 1c
-    .byte   $00     ; 1d
-    .byte   $00     ; 1e
-    .byte   $00     ; 1f
-    .byte   $00     ; 20
-    .byte   $20     ; 21 - Girl
-    .byte   $00     ; 22
-    .byte   $20     ; 23 - Bee Boy
-    .byte   $00     ; 24
-    .byte   $20     ; 25 - Octo
-    .byte   $00     ; 26
-    .byte   $20     ; 27 - Pig
-    .byte   $00     ; 28
-    .byte   $30     ; 29 - Doll
-    .byte   $00     ; 2a
-    .byte   $00     ; 2b
-    .byte   $10     ; 2c - Lily Pad
-    .byte   $00     ; 2d
-    .byte   $00     ; 2e
-    .byte   $00     ; 2f
+
+COLLISION           = $01
+ANIMATE_WATER       = $80+$10
+ANIMATE_BLINK       = $80+$20
+ANIMATE_ALTERNATE   = $80+$30
+
+bgInfoTable:
+; Collision and animation offset for each tile
+    .byte   COLLISION                   ; 00 - Water
+    .byte   $00                         ; 01 - Grass 1
+    .byte   $00                         ; 02 - Grass 2
+    .byte   $00                         ; 03 - Grass Flowers
+    .byte   COLLISION                   ; 04 - Tree 1
+    .byte   COLLISION                   ; 05 - Tree 2
+    .byte   COLLISION                   ; 06 - Forest
+    .byte   COLLISION                   ; 07 - Hedge
+    .byte   COLLISION                   ; 08 - Rock
+    .byte   $00                         ; 09 - Forest Path 1
+    .byte   $00                         ; 0a - Forest Path 2
+    .byte   $00                         ; 0b - Forest Path 3
+    .byte   COLLISION                   ; 0c - Wooden Sign
+    .byte   $00                         ; 0d - Gravel Path
+    .byte   $00                         ; 0e - Snow Cover
+    .byte   COLLISION                   ; 0f - Snow Tree
+    .byte   COLLISION                   ; 10 - Snow Rock
+    .byte   COLLISION                   ; 11 - Mountains
+    .byte   COLLISION+ANIMATE_WATER     ; 12 - Shore 1
+    .byte   COLLISION+ANIMATE_WATER     ; 13 - Shore 2
+    .byte   COLLISION+ANIMATE_WATER     ; 14 - Shore 3
+    .byte   COLLISION+ANIMATE_WATER     ; 15 - Pond Rock 1
+    .byte   COLLISION+ANIMATE_WATER     ; 16 - Pond Rock 2
+    .byte   COLLISION+ANIMATE_WATER     ; 17 - Pond Rock 3
+    .byte   COLLISION                   ; 18 - Bricks
+    .byte   $00                         ; 19 - Boards
+    .byte   COLLISION                   ; 1a - Door Closed
+    .byte   $00                         ; 1b - Door Open
+    .byte   $00                         ; 1c - Store floor
+    .byte   COLLISION                   ; 1d - Chair - right
+    .byte   COLLISION                   ; 1e - Chair - left
+    .byte   COLLISION                   ; 1f - Table
+    .byte   $00                         ; 20 - Tile
+    .byte   COLLISION+ANIMATE_BLINK     ; 21 - Girl-1
+    .byte   COLLISION+ANIMATE_BLINK     ; 22 - Girl-2
+    .byte   COLLISION+ANIMATE_BLINK     ; 23 - Bee Boy-1
+    .byte   COLLISION+ANIMATE_BLINK     ; 24 - Bee Boy-2
+    .byte   COLLISION+ANIMATE_BLINK     ; 25 - Octo-1
+    .byte   COLLISION+ANIMATE_BLINK     ; 26 - Octo-2
+    .byte   COLLISION+ANIMATE_BLINK     ; 27 - Pig-1
+    .byte   COLLISION+ANIMATE_BLINK     ; 28 - Pig-2
+    .byte   COLLISION+ANIMATE_ALTERNATE ; 29 - Doll-1
+    .byte   COLLISION+ANIMATE_ALTERNATE ; 2a - Doll-2
+    .byte   COLLISION                   ; 2b - Snail
+    .byte   COLLISION+ANIMATE_WATER     ; 1c - Lily Pad 1
+    .byte   COLLISION+ANIMATE_WATER     ; 1d - Lily Pad 2
+    .byte   COLLISION+ANIMATE_WATER     ; 1e - Lily Pad 3
+    .byte   $00                         ; 2f - Small mushroooms
 animateOffset:
-    .byte   $00     ; 30
-    .byte   $00     ; 31
-    .byte   $00     ; 32
-    .byte   $00     ; 33
-    .byte   $00     ; 34
-    .byte   $00     ; 35 
-    .byte   $00     ; 36
-    .byte   $00     ; 37
-    .byte   $00     ; 38
-    .byte   $00     ; 39
-    .byte   $00     ; 3a
-    .byte   $00     ; 3b
-    .byte   $00     ; 3c
-    .byte   $00     ; 3d
-    .byte   $00     ; 3e
-    .byte   $00     ; 3f
+    .byte   COLLISION                   ; 30 - Large mushroom
+    .byte   $00                         ; 31
+    .byte   $00                         ; 32
+    .byte   $00                         ; 33
+    .byte   $00                         ; 34
+    .byte   $00                         ; 35 
+    .byte   $00                         ; 36
+    .byte   $00                         ; 37
+    .byte   $00                         ; 38
+    .byte   $00                         ; 39
+    .byte   $00                         ; 3a
+    .byte   $00                         ; 3b
+    .byte   $00                         ; 3c
+    .byte   $00                         ; 3d
+    .byte   $00                         ; 3e
+    .byte   $00                         ; 3f
 
 ; Overlap animate offset with animate table since 0-f invalid
 
