@@ -48,6 +48,15 @@ MAP_DOWN            =   MAP_CENTER+MAP_SCREEN_WIDTH
 MAP_LEFT            =   MAP_CENTER-1
 MAP_RIGHT           =   MAP_CENTER+1
 
+PLAYER_RIGHT        =   0
+PLAYER_LEFT         =   1
+
+DIALOG_BOTTOM       =   MAP_Y_OFFSET + 3*2
+DIALOG_LEFT         =   MAP_X_OFFSET
+DIALOG_RIGHT        =   MAP_X_OFFSET + MAP_SCREEN_WIDTH*4 - 2
+DIALOG_X_LEFT       =   10
+DIALOG_X_RIGHT      =   26
+
 ;------------------------------------------------
 
 .segment "CODE"
@@ -63,13 +72,6 @@ MAP_RIGHT           =   MAP_CENTER+1
 
     jsr     dhgrInit    ; Turn on dhgr
 
-    ; set up map
-    lda     #MAP_SCREEN_WIDTH
-    sta     DHGR_MAP_BUFFER_WIDTH
-
-    lda     #MAP_SCREEN_HEIGHT
-    sta     DHGR_MAP_BUFFER_HEIGHT
-
     lda     #$00        ; Clear both pages
     sta     drawPage        
     jsr     clearScreen
@@ -80,8 +82,12 @@ MAP_RIGHT           =   MAP_CENTER+1
     jsr     clearScreen
     jsr     drawFrame
 
-    lda     #$00
-    sta     drawPage
+    ; set up map
+    lda     #MAP_SCREEN_WIDTH
+    sta     DHGR_MAP_BUFFER_WIDTH
+
+    lda     #MAP_SCREEN_HEIGHT
+    sta     DHGR_MAP_BUFFER_HEIGHT
 
 
     ; set initial coordinates
@@ -90,67 +96,64 @@ MAP_RIGHT           =   MAP_CENTER+1
     sta     mapWindowY
     jsr     DHGR_READ_MAP
 
-
-    ; set up dialog
-
-    lda     #0
-    sta     dialogTop
-
-    lda     #2
-    sta     dialogLeft
-
-    lda     #26
-    sta     dialogRight
-
-    lda     #6
-    sta     dialogX
-
-    lda     #0
-    sta     dialogDir
-
-    lda     #<dialog
-    sta     stringPtr0
-    lda     #>dialog
-    sta     stringPtr1
-    jsr     drawDialog
-
-    lda     #$20
-    sta     drawPage
-
-    lda     #<dialog
-    sta     stringPtr0
-    lda     #>dialog
-    sta     stringPtr1
-    jsr     drawDialog
-
-
 gameLoop:
 
+    jsr     flipPage        ; display final drawing from last iteration of game loop
+
+    ; clock tick
     inc     gameTime
     lda     gameTime
     lsr
     sta     animateTime
 
+    ; update screen
     jsr     drawScreen
 
+
+    ;-------------------
+    ; Dialog
+    ;-------------------
+
+    lda     dialogAction
+    beq     :+
+
+    jsr     drawDialog
+
+    ; any key to clear
     lda     KBD
     bpl     gameLoop
     sta     KBDSTRB
 
-    cmp     #KEY_ESC
-    bne     :+
+    lda     #0
+    sta     dialogAction
 
-    ; Set ctrl-y vector
-    lda     #$4c        ; JMP
-    sta     $3f8
-    lda     #<quit
-    sta     $3f9
-    lda     #>quit
-    sta     $3fa
+    ; Check for link
 
-    bit     TXTSET
-    jmp     MONZ        ; enter monitor
+    lda     dialogNext
+    beq     gameLoop
+
+    lda     dialogNext
+    sta     dialogIndex
+
+    jsr     readDialog
+    jmp     gameLoop
+
 :
+
+
+    ;-------------------
+    ; Input
+    ;-------------------
+
+    ; check user input
+    lda     KBD
+    bpl     gameLoop
+    sta     KBDSTRB
+
+
+    ;
+    ; Movement
+    ;
 
     cmp     #KEY_UP
     bne     :+
@@ -163,7 +166,6 @@ gameLoop:
     dec     mapWindowY
 done_up:
     jmp     gameLoop
-
 :
  
     cmp     #KEY_DOWN
@@ -182,8 +184,8 @@ done_down:
 
     cmp     #KEY_LEFT
     bne     :+
-    lda     #1
-    sta     fgTile
+    lda     #PLAYER_LEFT
+    sta     playerTile
     lda     mapWindowX
     beq     done_left
     ldy     MAP_BUFFER+MAP_LEFT
@@ -197,8 +199,8 @@ done_left:
 
     cmp     #KEY_RIGHT
     bne     :+
-    lda     #0
-    sta     fgTile
+    lda     #PLAYER_RIGHT
+    sta     playerTile
     lda     mapWindowX
     cmp     #MAP_WIDTH-MAP_SCREEN_WIDTH
     beq     done_right
@@ -211,10 +213,42 @@ done_right:
     jmp     gameLoop
 :
 
+    ;
+    ; Action
+    ;
+
+    cmp     #KEY_SPACE
+    bne     :+
+
+    lda     #0
+    sta     dialogIndex
+
+    jsr     readDialog
+
     jmp     gameLoop
 
 
-dialog:     .byte   "EXPLORE!",0
+:
+    ;
+    ; Exit
+    ;
+
+    cmp     #KEY_ESC
+    bne     :+
+
+    ; Set ctrl-y vector
+    lda     #$4c        ; JMP
+    sta     $3f8
+    lda     #<quit
+    sta     $3f9
+    lda     #>quit
+    sta     $3fa
+
+    bit     TXTSET
+    jmp     MONZ        ; enter monitor
+:
+
+    jmp     gameLoop
 
 .endproc
 
@@ -255,16 +289,25 @@ pageSelect:
     sta     drawPage
 
 
-    ; Draw map
+    ; Draw components
     ;-------------------------------------------------------------------------
 
     jsr     drawMap
+
+    jsr     drawCoordinates
 
 
     ; Set display page
     ;-------------------------------------------------------------------------
 
-flipPage:
+    rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; flipPage
+;-----------------------------------------------------------------------------
+
+.proc flipPage
     ; flip page
     ldx     PAGE2
     bmi     flipToPage1
@@ -516,24 +559,24 @@ bottom_loop:
     lda     dialogDir
     beq     :+
 
-    lda     #DIALOG_RS1
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
-    inc     tileX
-    inc     tileX
-    lda     #DIALOG_RS2
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
-    rts
-
-:
-
     lda     #DIALOG_LS1
     sta     bgTile
     jsr     DHGR_DRAW_7X8
     inc     tileX
     inc     tileX
     lda     #DIALOG_LS2
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+    rts
+
+:
+
+    lda     #DIALOG_RS1
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+    inc     tileX
+    inc     tileX
+    lda     #DIALOG_RS2
     sta     bgTile
     jsr     DHGR_DRAW_7X8
     rts
@@ -670,6 +713,77 @@ nextPage:   .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Draw coordinates (for debug)
+;-----------------------------------------------------------------------------
+
+.proc drawCoordinates
+
+    ; draw coordinates
+
+    ; FIXME: should make default font normal and inverse for dialog
+    lda     #$ff
+    sta     invMask
+
+    lda     #MAP_Y_OFFSET + MAP_SCREEN_HEIGHT*2 - 1    ; lined up with bottom
+    sta     tileY
+
+    lda     #0
+    sta     tileX
+    lda     mapWindowX
+    lsr
+    lsr
+    lsr
+    lsr                 ; / 16
+    tax
+    lda     hexOffset,x
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+
+    lda     #2
+    sta     tileX
+    lda     mapWindowX
+    and     #$f
+    tax
+    lda     hexOffset,x
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+
+
+    lda     #MAP_Y_OFFSET + MAP_SCREEN_HEIGHT*2 + 1    ; below bottom
+    sta     tileY
+
+
+    lda     #6
+    sta     tileX
+    lda     mapWindowY
+    lsr
+    lsr
+    lsr
+    lsr                 ; / 16
+    tax
+    lda     hexOffset,x
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+
+    lda     #8
+    sta     tileX
+    lda     mapWindowY
+    and     #$f
+    tax
+    lda     hexOffset,x
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+
+    lda     #$0
+    sta     invMask
+
+    rts
+
+hexOffset: .byte    $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$1,$2,$3,$4,$5,$6
+
+.endproc
+
+;-----------------------------------------------------------------------------
 ; Draw Map
 ;
 ;-----------------------------------------------------------------------------
@@ -730,6 +844,8 @@ loopx:
     cmp     #MAP_CENTER
     bne     draw_background
 
+    lda     playerTile
+    sta     fgTile
     jsr     DHGR_DRAW_FG_14X16
     jmp     continue
 
@@ -760,6 +876,91 @@ mapIndex:       .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Process dialog
+;
+;-----------------------------------------------------------------------------
+
+dialogPtr       = A2              ; Use A2 for temp pointer
+
+.proc readDialog
+
+    ; Set up pointer
+    lda     dialogIndex
+    asl                     ; *8
+    asl                     
+    asl                     
+    sta     dialogPtr
+
+    ; FIXME, need more than 32 dialogs
+
+    lda     #>dialogTable   ; Table must be page aligned 
+    sta     dialogPtr+1
+
+    ; set string pointer
+
+    ldy     #0
+    lda     (dialogPtr),y
+    sta     stringPtr0
+    iny
+    lda     (dialogPtr),y
+    sta     stringPtr1
+
+    ; action
+    iny
+    lda     (dialogPtr),y
+    sta     dialogAction
+
+    ; next
+    ldy     #5
+    lda     (dialogPtr),y
+    sta     dialogNext
+
+    ; Top = bottom - height
+
+    lda     #DIALOG_BOTTOM
+    ldy     #4              ; height
+    sec
+    sbc     (dialogPtr),y
+    sta     dialogTop
+
+    ; Left / Right based on direction player is facing
+
+    lda     playerTile
+    sta     dialogDir
+    cmp     #PLAYER_RIGHT
+    bne     dialog_left
+
+    lda     #DIALOG_RIGHT
+    sta     dialogRight
+
+    ldy     #3              ; width
+    sec
+    sbc     (dialogPtr),y
+    sta     dialogLeft
+
+    lda     #DIALOG_X_RIGHT
+    sta     dialogX
+
+    rts
+
+dialog_left:
+
+    lda     #DIALOG_LEFT
+    sta     dialogLeft
+
+    ldy     #3              ; width
+    clc
+    adc     (dialogPtr),y
+    sta     dialogRight
+
+    lda     #DIALOG_X_LEFT
+    sta     dialogX
+
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
 ; Quit
 ;
 ;   Exit to ProDos
@@ -785,11 +986,12 @@ quit_params:
 
 .include "sounds.asm"
 
-; Global Variables
 ;-----------------------------------------------------------------------------
+; Global Variables
 
 gameTime:           .byte   0
 animateTime:        .byte   0
+playerTile:         .byte   0
 
 ; Box routine   
 boxLeft:            .byte   0
@@ -798,12 +1000,18 @@ boxTop:             .byte   0
 boxBottom:          .byte   0
 
 ; Dialog
+dialogIndex:        .byte   0
 dialogLeft:         .byte   0
 dialogRight:        .byte   0
 dialogTop:          .byte   0
 dialogX:            .byte   0
 dialogDir:          .byte   0
+dialogAction:       .byte   0
+dialogNext:         .byte   0
 
+
+;-----------------------------------------------------------------------------
+; Tile Dynamic Info
 
 COLLISION           = $01
 ANIMATE_WATER       = $80+$10
@@ -933,3 +1141,40 @@ animateOffset:
     .byte   1
     .byte   0
     .byte   1
+
+
+;-----------------------------------------------------------------------------
+; Dialog
+
+.align 256
+
+DIALOG_ACTION_NONE      = 0
+DIALOG_ACTION_DISPLAY   = 1
+
+dialogTable:
+
+; width =  (1+maxcol)*2 (range = 10 - 26)
+; height = 2 + rows
+
+; 0
+    .word   dialogString0
+    .byte   DIALOG_ACTION_DISPLAY
+    .byte   10,3                    ; width, height
+    .byte   1                       ; Next dialog
+    .byte   0,0                     ; Padding
+
+; 1
+    .word   dialogString1
+    .byte   DIALOG_ACTION_DISPLAY
+    .byte   26,3                    ; width, height
+    .byte   0                       ; Next dialog
+    .byte   0,0                     ; Padding
+
+
+ dialogString0:
+    String      "HEY!"   
+
+ dialogString1:
+    String      "0123456789AB"   
+   
+

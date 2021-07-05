@@ -149,12 +149,9 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
 
     jsr     DHGR_INIT
 
-    jsr     inline_print
-    StringCR "Press any to launch game"
 
-:
     lda     KBD
-    bpl     :-
+    bpl     :+
     sta     KBDSTRB
 
     cmp     #KEY_ESC

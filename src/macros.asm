@@ -21,3 +21,10 @@
         .byte   s
         .byte   13,0
 .endmacro
+
+; Add CR to the end of a string
+.macro  StringCont s
+        .byte   s
+        .byte   13,0
+.endmacro
+
