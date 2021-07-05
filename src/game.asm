@@ -42,6 +42,7 @@ MAP_X_OFFSET        =   6
 MAP_Y_OFFSET        =   6   ; must be even
 MAP_SCREEN_WIDTH    =   7
 MAP_SCREEN_HEIGHT   =   7
+MAP_CENTER          =   (3*7)+3
 
 ;------------------------------------------------
 
@@ -76,6 +77,7 @@ MAP_SCREEN_HEIGHT   =   7
     lda     #0
     sta     mapWindowX
     sta     mapWindowY
+    jsr     DHGR_READ_MAP
 
 
     ; set up dialog
@@ -161,6 +163,8 @@ done_down:
 
     cmp     #KEY_LEFT
     bne     :+
+    lda     #1
+    sta     fgTile
     lda     mapWindowX
     beq     done_left
     dec     mapWindowX
@@ -170,6 +174,8 @@ done_left:
 
     cmp     #KEY_RIGHT
     bne     :+
+    lda     #0
+    sta     fgTile
     lda     mapWindowX
     cmp     #MAP_WIDTH-MAP_SCREEN_WIDTH
     beq     done_right
@@ -225,7 +231,6 @@ pageSelect:
     ; Draw map
     ;-------------------------------------------------------------------------
 
-    jsr     DHGR_READ_MAP
     jsr     drawMap
 
 
@@ -644,6 +649,9 @@ nextPage:   .byte   0
 
 .proc drawMap
 
+    ; Read map buffer
+    jsr     DHGR_READ_MAP
+
     lda     #0
     sta     mapIndex
 
@@ -656,6 +664,11 @@ loopy:
     sta     tileX
 
 loopx:
+
+
+    ;---------------------
+    ; Set background tile
+    ;---------------------
 
     ; Update animation index
     clc 
@@ -680,8 +693,22 @@ loopx:
  :
 
     sta     bgTile
+
+    ;---------------------
+    ; Draw tile
+    ;---------------------
+
+    lda     mapIndex
+    cmp     #MAP_CENTER
+    bne     draw_background
+
+    jsr     DHGR_DRAW_FG_14X16
+    jmp     continue
+
+draw_background:
     jsr     DHGR_DRAW_14X16
 
+continue:
     inc     mapIndex
 
     lda     tileX
