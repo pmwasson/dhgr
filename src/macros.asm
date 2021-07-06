@@ -25,6 +25,6 @@
 ; Add CR to the end of a string
 .macro  StringCont s
         .byte   s
-        .byte   13,0
+        .byte   13
 .endmacro
 

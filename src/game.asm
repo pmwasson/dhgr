@@ -52,8 +52,10 @@ PLAYER_RIGHT        =   0
 PLAYER_LEFT         =   1
 
 DIALOG_BOTTOM       =   MAP_Y_OFFSET + 3*2
-DIALOG_LEFT         =   MAP_X_OFFSET
-DIALOG_RIGHT        =   MAP_X_OFFSET + MAP_SCREEN_WIDTH*4 - 2
+;DIALOG_LEFT         =   MAP_X_OFFSET
+;DIALOG_RIGHT        =   MAP_X_OFFSET + MAP_SCREEN_WIDTH*4 - 2
+DIALOG_LEFT         =   2
+DIALOG_RIGHT        =   36
 DIALOG_X_LEFT       =   10
 DIALOG_X_RIGHT      =   26
 
@@ -100,6 +102,8 @@ gameLoop:
 
     jsr     flipPage        ; display final drawing from last iteration of game loop
 
+skipFlip:
+
     ; clock tick
     inc     gameTime
     lda     gameTime
@@ -109,20 +113,29 @@ gameLoop:
     ; update screen
     jsr     drawScreen
 
-
     ;-------------------
     ; Dialog
     ;-------------------
 
     lda     dialogAction
-    beq     :+
+    beq     normalInput
 
     jsr     drawDialog
 
+    jsr     flipPage        ; display dialog
+
     ; any key to clear
+:
     lda     KBD
-    bpl     gameLoop
+    cmp     #KEY_SPACE
+    bne     :-
     sta     KBDSTRB
+
+    jsr     flipPage        ; display previous non-dialog page while we clean up
+
+    ; refresh
+    jsr     clearScreen
+    jsr     drawFrame
 
     lda     #0
     sta     dialogAction
@@ -130,17 +143,16 @@ gameLoop:
     ; Check for link
 
     lda     dialogNext
-    beq     gameLoop
+    beq     skipFlip
 
     lda     dialogNext
     sta     dialogIndex
 
     jsr     readDialog
-    jmp     gameLoop
 
-:
+    jmp     skipFlip
 
-
+normalInput:
     ;-------------------
     ; Input
     ;-------------------
@@ -279,26 +291,12 @@ done_right:
 
 .proc drawScreen
 
-    ; Alternate page to draw
-    ;-------------------------------------------------------------------------
-    lda     #$00    ; if showing page 2, draw on page 1
-    ldx     PAGE2
-    bmi     pageSelect
-    lda     #$20    ; displaying page 1, draw on page 2
-pageSelect:
-    sta     drawPage
-
-
     ; Draw components
     ;-------------------------------------------------------------------------
 
     jsr     drawMap
 
     jsr     drawCoordinates
-
-
-    ; Set display page
-    ;-------------------------------------------------------------------------
 
     rts
 .endproc
@@ -312,10 +310,14 @@ pageSelect:
     ldx     PAGE2
     bmi     flipToPage1
     sta     HISCR           ; display page 2
+    lda     #0
+    sta     drawPage        ; draw on page 1
     rts
 
 flipToPage1:
     sta     LOWSCR          ; diaplay page 1
+    lda     #$20
+    sta     drawPage        ; draw on page 2
     rts
 
 .endproc
@@ -466,7 +468,6 @@ dialog_string:
     beq     next_row
     cmp     #13
     beq     next_row
-
     and     #$3f
     sta     bgTile
     jsr     DHGR_DRAW_7X8
@@ -1159,14 +1160,14 @@ dialogTable:
 ; 0
     .word   dialogString0
     .byte   DIALOG_ACTION_DISPLAY
-    .byte   10,3                    ; width, height
+    .byte   14,3                    ; width, height
     .byte   1                       ; Next dialog
     .byte   0,0                     ; Padding
 
 ; 1
     .word   dialogString1
     .byte   DIALOG_ACTION_DISPLAY
-    .byte   26,3                    ; width, height
+    .byte   34,12                   ; width, height
     .byte   0                       ; Next dialog
     .byte   0,0                     ; Padding
 
@@ -1175,6 +1176,15 @@ dialogTable:
     String      "HEY!"   
 
  dialogString1:
-    String      "0123456789AB"   
+    StringCont  "MAXIMUM STRING"   
+    StringCont  "0123456789ABCDEF"   
+    StringCont  "BEEP"   
+    StringCont  "THIS IS A TEST"   
+    StringCont  "BOOP"   
+    StringCont  "BZZZ"   
+    StringCont  "     HMMMMM"   
+    StringCont  "     HMMMMM"   
+    StringCont  "     HMMMMM"   
+    String      "     HMMMMM"   
    
 
