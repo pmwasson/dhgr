@@ -674,13 +674,13 @@ fileTypeMap:    String "Map"
 fileTypeExe:    String "Executable"
 
 ; File names
-fileNameFont1:  StringLen "/DHGR/TILESET7X8.1"
-fileNameFont2:  StringLen "/DHGR/TILESET7X8.2"
-fileNameBG:     StringLen "/DHGR/TILESET14X16.0"
-fileNameFG:     StringLen "/DHGR/TILESET14X16.1"
-fileNameMap:    StringLen "/DHGR/MAP.0"
-fileNameEngine: StringLen "/DHGR/ENGINE"
-fileNameGame:   StringLen "/DHGR/GAME"
+fileNameFont1:  StringLen "/DHGR/DATA/TILESET7X8.1"
+fileNameFont2:  StringLen "/DHGR/DATA/TILESET7X8.2"
+fileNameBG:     StringLen "/DHGR/DATA/TILESET14X16.0"
+fileNameFG:     StringLen "/DHGR/DATA/TILESET14X16.1"
+fileNameMap:    StringLen "/DHGR/DATA/MAP.0"
+fileNameEngine: StringLen "/DHGR/DATA/ENGINE"
+fileNameGame:   StringLen "/DHGR/DATA/GAME"
 
 ; Asset List
 fileDescription:    ; type, name, address, size, dest, interleave

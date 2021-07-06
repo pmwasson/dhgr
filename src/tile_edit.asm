@@ -2494,11 +2494,11 @@ clipboardData:
 ; ProDos pathname
 
 pathname_14x16:
-    StringLen "/DHGR/TILESET14X16.0"
+    StringLen "/DHGR/DATA/TILESET14X16.0"
 pathname_14x16_end:
 
 pathname_7x8:
-    StringLen "/DHGR/TILESET7X8.0"
+    StringLen "/DHGR/DATA/TILESET7X8.0"
 pathname_7x8_end:
 
 
