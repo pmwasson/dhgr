@@ -1145,31 +1145,40 @@ dialogTable:
 ; 0
     .word   dialogString0
     .byte   DIALOG_ACTION_DISPLAY
-    .byte   14,3                    ; width, height
+    .byte   30,4                    ; width, height
     .byte   1                       ; Next dialog
     .byte   0,0                     ; Padding
 
 ; 1
     .word   dialogString1
     .byte   DIALOG_ACTION_DISPLAY
-    .byte   34,12                   ; width, height
+    .byte   28,6                    ; width, height
     .byte   0                       ; Next dialog
     .byte   0,0                     ; Padding
 
 
+; max characters in a line: 16
+; max rows = 10
+;
+;                0123456789abcdef
+;                1              .
+;                2              .
+;                3              .
+;                4              .
+;                5              .
+;                6              .
+;                7              .
+;                8              .
+;                9...............
+
  dialogString0:
-    String      "HEY!"   
+    StringCont  "WELCOME TO THE"   
+    String      "GAME!"   
 
  dialogString1:
-    StringCont  "MAXIMUM STRING"   
-    StringCont  "0123456789ABCDEF"   
-    StringCont  "BEEP"   
-    StringCont  "THIS IS A TEST"   
-    StringCont  "BOOP"   
-    StringCont  "BZZZ"   
-    StringCont  "     HMMMMM"   
-    StringCont  "     HMMMMM"   
-    StringCont  "     HMMMMM"   
-    String      "     HMMMMM"   
+    StringCont  "USE THE ARROW"   
+    StringCont  "KEYS TO MOVE"   
+    StringCont  "AND SPACE TO"   
+    String      "INTERACT."   
    
 
