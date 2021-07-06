@@ -31,10 +31,8 @@ DIALOG_RT       = $40+11
 DIALOG_LL       = $40+12
 DIALOG_LO       = $40+13
 DIALOG_LR       = $40+14
-DIALOG_RS1      = $40+15
-DIALOG_RS2      = $40+16
-DIALOG_LS1      = $40+17
-DIALOG_LS2      = $40+18
+DIALOG_LS       = 2
+DIALOG_RS       = 3
 
 MAP_WIDTH           =  64
 MAP_HEIGHT          =  64
@@ -560,26 +558,14 @@ bottom_loop:
     lda     dialogDir
     beq     :+
 
-    lda     #DIALOG_LS1
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
-    inc     tileX
-    inc     tileX
-    lda     #DIALOG_LS2
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
+    lda     #DIALOG_LS
+    sta     fgTile
+    jsr     DHGR_DRAW_FG_14X16
     rts
-
 :
-
-    lda     #DIALOG_RS1
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
-    inc     tileX
-    inc     tileX
-    lda     #DIALOG_RS2
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
+    lda     #DIALOG_RS
+    sta     fgTile
+    jsr     DHGR_DRAW_FG_14X16
     rts
 
 stringIndex:    .byte   0
@@ -841,17 +827,15 @@ loopx:
     ; Draw tile
     ;---------------------
 
+    jsr     DHGR_DRAW_14X16
+
     lda     mapIndex
     cmp     #MAP_CENTER
-    bne     draw_background
+    bne     continue
 
     lda     playerTile
     sta     fgTile
     jsr     DHGR_DRAW_FG_14X16
-    jmp     continue
-
-draw_background:
-    jsr     DHGR_DRAW_14X16
 
 continue:
     inc     mapIndex
@@ -1009,6 +993,7 @@ dialogX:            .byte   0
 dialogDir:          .byte   0
 dialogAction:       .byte   0
 dialogNext:         .byte   0
+
 
 
 ;-----------------------------------------------------------------------------

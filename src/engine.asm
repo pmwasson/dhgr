@@ -189,8 +189,8 @@ screenPtr1Copy: .byte   0
 ;-----------------------------------------------------------------------------
 ; draw tile foreground (14x16)
 ;
-;   Draws a background tile anded with a mask and ored with a foreground
-;   tile.  It is assumed that the foreground tile comes first and the
+;   Draw a foreground tile on top of the screen.
+;   It is assumed that the foreground tile comes first and the
 ;   mask follows in aligned memory.
 ;-----------------------------------------------------------------------------
 
@@ -217,21 +217,6 @@ screenPtr1Copy: .byte   0
     sta     fgPtr1
     sta     maskPtr1
 
-    lda     bgTile
-    ror                     ; *64
-    ror
-    ror
-    and     #$c0
-    sta     bgPtr0
-    sta     bgPtr0Copy
-
-    lda     bgTile
-    lsr
-    lsr
-    clc
-    adc     bgSheet_14x16+1
-    sta     bgPtr1
-
     ; calculate screen pointer
     ldx     tileY
     lda     tileX
@@ -248,8 +233,6 @@ screenPtr1Copy: .byte   0
     jsr     drawTile
 
     ; restore tile pointers (page byte doesn't change)
-    lda     bgPtr0Copy
-    sta     bgPtr0
     lda     fgPtr0Copy
     sta     fgPtr0
     lda     maskPtr0Copy
@@ -279,22 +262,22 @@ drawTile:
 
 drawLoop:
     ldy     #0
-    lda     (bgPtr0),y
+    lda     (screenPtr0),y
     and     (maskPtr0),y
     ora     (fgPtr0),y
     sta     (screenPtr0),y
     ldy     #1
-    lda     (bgPtr0),y
+    lda     (screenPtr0),y
     and     (maskPtr0),y
     ora     (fgPtr0),y
     sta     (screenPtr0),y
     ldy     #2
-    lda     (bgPtr0),y
+    lda     (screenPtr0),y
     and     (maskPtr0),y
     ora     (fgPtr0),y
     sta     (screenPtr0),y
     ldy     #3
-    lda     (bgPtr0),y
+    lda     (screenPtr0),y
     and     (maskPtr0),y
     ora     (fgPtr0),y
     sta     (screenPtr0),y
@@ -302,10 +285,6 @@ drawLoop:
     ; Add 4 to tile pointers
     ; assumes aligned such that there are no page crossing
     clc
-    lda     bgPtr0
-    adc     #4
-    sta     bgPtr0
-
     lda     maskPtr0
     adc     #4
     sta     maskPtr0
@@ -340,7 +319,6 @@ done:
     rts    
 
 ; locals
-bgPtr0Copy:     .byte   0
 fgPtr0Copy:     .byte   0
 maskPtr0Copy:   .byte   0
 screenPtr0Copy: .byte   0
