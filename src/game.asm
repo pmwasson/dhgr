@@ -711,62 +711,71 @@ nextPage:   .byte   0
     lda     #$ff
     sta     invMask
 
+    ;------------------
+    ; X coord
+
     lda     #MAP_Y_OFFSET + MAP_SCREEN_HEIGHT*2 - 1    ; lined up with bottom
     sta     tileY
-
     lda     #0
     sta     tileX
     lda     mapWindowX
-    lsr
-    lsr
-    lsr
-    lsr                 ; / 16
-    tax
-    lda     hexOffset,x
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
+    jsr     drawHex
 
-    lda     #2
-    sta     tileX
-    lda     mapWindowX
-    and     #$f
-    tax
-    lda     hexOffset,x
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
-
+    ;------------------
+    ; Y coord
 
     lda     #MAP_Y_OFFSET + MAP_SCREEN_HEIGHT*2 + 1    ; below bottom
     sta     tileY
-
-
     lda     #6
     sta     tileX
     lda     mapWindowY
-    lsr
-    lsr
-    lsr
-    lsr                 ; / 16
-    tax
-    lda     hexOffset,x
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
+    jsr     drawHex
 
-    lda     #8
+    ;------------------
+    ; Frame count
+
+    lda     #0
     sta     tileX
-    lda     mapWindowY
-    and     #$f
-    tax
-    lda     hexOffset,x
-    sta     bgTile
-    jsr     DHGR_DRAW_7X8
+    sta     tileY
+    lda     gameTime
+    jsr     drawHex
+    
+
+
+    ;------------------
 
     lda     #$0
     sta     invMask
 
     rts
 
-hexOffset: .byte    $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$1,$2,$3,$4,$5,$6
+
+drawHex:
+    sta     temp
+    lsr
+    lsr
+    lsr
+    lsr                 ; / 16
+    tax
+    lda     hexOffset,x
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+
+    inc     tileX
+    inc     tileX
+
+    lda     temp
+    and     #$f
+    tax
+    lda     hexOffset,x
+    sta     bgTile
+    jsr     DHGR_DRAW_7X8
+
+    rts
+
+
+hexOffset:  .byte   $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$1,$2,$3,$4,$5,$6
+temp:       .byte   0
 
 .endproc
 
@@ -791,6 +800,12 @@ loopy:
     lda     #MAP_X_OFFSET
     sta     tileX
 
+    lda     tileY
+    lsr             ; /2
+    clc
+    adc     animateTime
+    sta     animateY        ; Y component for animation
+
 loopx:
 
 
@@ -799,10 +814,11 @@ loopx:
     ;---------------------
 
     ; Update animation index
-    clc 
-    lda     tileY
-    adc     tileX           ; x+y should never carry
-    adc     animateTime
+    lda     tileX
+    lsr
+    lsr
+    clc
+    adc     animateY        ; X component for animation
     and     #$F
     sta     animateIndex
 
@@ -812,12 +828,13 @@ loopx:
     tax                         ; x = tile
     ldy     bgInfoTable,x      ; y = animation offst table base
     bpl     :+
-    clc
     tya
+    clc
     and     #$70
     adc     animateIndex
     tay                         
     txa                         
+    clc
     adc     animateOffset,y     ; add offset
  :
 
@@ -855,10 +872,13 @@ continue:
 
     rts
 
-animateIndex:   .byte   0
 mapIndex:       .byte   0
+animateY:       .byte   0
+animateIndex:   .byte   0
 
 .endproc
+
+
 
 ;-----------------------------------------------------------------------------
 ; Process dialog
@@ -1027,9 +1047,9 @@ bgInfoTable:
     .byte   COLLISION+ANIMATE_WATER     ; 12 - Shore 1
     .byte   COLLISION+ANIMATE_WATER     ; 13 - Shore 2
     .byte   COLLISION+ANIMATE_WATER     ; 14 - Shore 3
-    .byte   COLLISION+ANIMATE_WATER     ; 15 - Pond Rock 1
-    .byte   COLLISION+ANIMATE_WATER     ; 16 - Pond Rock 2
-    .byte   COLLISION+ANIMATE_WATER     ; 17 - Pond Rock 3
+    .byte   ANIMATE_WATER               ; 15 - Pond Rock 1
+    .byte   ANIMATE_WATER               ; 16 - Pond Rock 2
+    .byte   ANIMATE_WATER               ; 17 - Pond Rock 3
     .byte   COLLISION                   ; 18 - Bricks
     .byte   $00                         ; 19 - Boards
     .byte   COLLISION                   ; 1a - Door Closed
