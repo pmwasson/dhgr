@@ -77,27 +77,43 @@ ACTION_TYPE_FLASH       = 2
 
 actionTable:
 
-; width =  (1+maxcol)*2 (range = 10 - 26)
-; height = 2 + rows
+
 
 ; 0
     .byte   ACTION_TYPE_DIALOG
     .byte   1                       ; Next dialog
-    .word   dialogString0
+    .word   dialogStringWelcome
     .byte   30,4                    ; width, height
     .byte   0,0                     ; Padding
 
-; 1
+; 1 - Sign
     .byte   ACTION_TYPE_DIALOG
-    .byte   2                       ; Next dialog
-    .word   dialogString1
-    .byte   28,6                    ; width, height
+    .byte   0                       ; Next dialog
+    .word   dialogStringSign
+    .byte   26,4                    ; width, height
     .byte   0,0                     ; Padding
 
 ; 2
+    .byte   ACTION_TYPE_DIALOG
+    .byte   0                       ; Next dialog
+    .word   dialogStringHello
+    .byte   14,4                    ; width, height
+    .byte   0,0                     ; Padding
+
+; 3
+    .byte   ACTION_TYPE_DIALOG
+    .byte   0                       ; Next dialog
+    .word   dialogStringOink
+    .byte   14,4                    ; width, height
+    .byte   0,0                     ; Padding
+
+; 4
     .byte   ACTION_TYPE_FLASH
     .byte   0
     .byte   0,0,0,0,0,0
+
+; width =  (1+maxcol)*2 (range = 14 - 26)
+; height = 2 + rows
 
 ; max characters in a line: 16
 ; max rows = 10
@@ -113,14 +129,16 @@ actionTable:
 ;                8              .
 ;                9...............
 
- dialogString0:
+ dialogStringWelcome:
     StringCont  "WELCOME TO THE"   
     String      "GAME!"   
-
- dialogString1:
-    StringCont  "USE THE ARROW"   
-    StringCont  "KEYS TO MOVE"   
-    StringCont  "AND SPACE TO"   
-    String      "INTERACT."   
    
+ dialogStringSign:
+    String     "I AM A SIGN"   
+
+ dialogStringHello:
+    String     "HELLO."   
+
+ dialogStringOink:
+    String     " OINK!"   
 
