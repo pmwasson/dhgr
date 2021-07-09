@@ -55,6 +55,8 @@ DIALOG_RIGHT        =   36
 DIALOG_X_LEFT       =   10
 DIALOG_X_RIGHT      =   26
 
+SIGN_BOTTOM         =   MAP_Y_OFFSET + 3*2
+
 ;------------------------------------------------
 
 .segment "CODE"
@@ -607,6 +609,9 @@ bottom_loop:
     inc     tileY
 
     lda     dialogX
+    bne     :+
+    rts
+:
     sta     tileX
 
     lda     dialogDir
@@ -625,7 +630,6 @@ bottom_loop:
 stringIndex:    .byte   0
 
 .endproc
-
 
 ;-----------------------------------------------------------------------------
 ; Draw String
@@ -872,25 +876,26 @@ loopx:
     lsr
     lsr
     clc
-    adc     animateY        ; X component for animation
-    and     #$F
+    adc     animateY            ; X component for animation
+    and     #$1F
     sta     animateIndex
 
     ; Apply animation
     ldy     mapIndex
     lda     MAP_BUFFER,y        
     tax                         ; x = tile
-    ldy     bgInfoTable,x      ; y = animation offst table base
+    ldy     bgInfoTable,x       ; y = animation base
     bpl     :+
+
     tya
     clc
-    and     #$F0
+    and     #$E0
     adc     animateIndex
-    tay                         
-    txa                         
+    tay
+    txa
     clc
     adc     animateOffset,y     ; add offset
- :
+:
 
     sta     bgTile
 
@@ -977,6 +982,11 @@ actionPtr       = A2              ; Use A2 for temp pointer
     jmp     readActionDialog    ; link return
 :
 
+    cmp     #ACTION_TYPE_SIGN
+    bne     :+
+
+    jmp     readActionSign      ; link return
+:
 
     cmp     #ACTION_TYPE_FLASH
     bne     :+
@@ -1064,6 +1074,62 @@ finish:
 .endproc
 
 ;-----------------------------------------------------------------------------
+; Read action: Sign
+;-----------------------------------------------------------------------------
+
+.proc readActionSign
+
+    ; set string pointer
+    ldy     #2
+    lda     (actionPtr),y
+    sta     stringPtr0
+    iny     ; 3
+    lda     (actionPtr),y
+    sta     stringPtr1
+
+    ; Top = bottom - height
+
+    lda     #DIALOG_BOTTOM
+    ldy     #5              ; height
+    sec
+    sbc     (actionPtr),y
+    sta     dialogTop
+
+    ; Left = 20 - width/2
+    ; Right = left + width
+
+    ldy     #4              ; width
+    lda     (actionPtr),y
+    lsr
+    sta     halfWidth
+    lda     #20
+    sec
+    sbc     halfWidth
+    sta     dialogLeft
+    clc
+    adc     (actionPtr),y
+    sta     dialogRight
+
+    lda     #0
+    sta     dialogX         ; don't draw a stem
+
+    lda     #1
+    sta     actionWait
+    sta     actionRefresh
+
+    lda     #$ff            ; invert
+    sta     invMask
+    jsr     drawDialog
+    lda     #0
+    sta     invMask
+
+    rts
+
+halfWidth:  .byte   0
+
+.endproc
+
+;-----------------------------------------------------------------------------
 ; Quit
 ;
 ;   Exit to ProDos
@@ -1122,16 +1188,18 @@ actionRefresh:      .byte   0
 ;-----------------------------------------------------------------------------
 ; Tile Dynamic Info
 
-COLLISION           = $40
+COLLISION           = $10
 BACKGROUND_ACTION   = $0F       ; Up to 15 background actions
 ANIMATE_WATER       = $80
-ANIMATE_BLINK       = $80+$10
-ANIMATE_ALTERNATE   = $80+$20
+ANIMATE_BLINK       = $a0
+ANIMATE_ALTERNATE   = $c0
 
 BACKGROUND_SIGN     = $1
 BACKGROUND_HELLO    = $2
 BACKGROUND_OINK     = $3
 BACKGROUND_FLASH    = $4
+
+.align 256
 
 animateOffset:                          ; overlap animate with BG
 bgInfoTable:
@@ -1202,7 +1270,7 @@ bgInfoTable:
     .byte   $00                                             ; 3f
 
 ; Overlap animate offset with animate table since 0-f invalid
-    .res    40
+    .res    $40
 
     ; 80 - water
     .byte   0
@@ -1221,8 +1289,40 @@ bgInfoTable:
     .byte   1
     .byte   1
     .byte   1
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   1
+    .byte   1
+    .byte   1
+    .byte   2
+    .byte   2
+    .byte   2
+    .byte   2
+    .byte   2
+    .byte   1
+    .byte   1
+    .byte   1
 
-    ; 90 - blink
+    ; a0 - blink
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
     .byte   0
     .byte   0
     .byte   0
@@ -1240,7 +1340,23 @@ bgInfoTable:
     .byte   0
     .byte   1
 
-    ; a0 - alternate
+    ; c0 - alternate
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   1
     .byte   0
     .byte   1
     .byte   0

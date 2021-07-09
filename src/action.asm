@@ -9,7 +9,8 @@
 
 ACTION_TYPE_NONE        = 0
 ACTION_TYPE_DIALOG      = 1
-ACTION_TYPE_FLASH       = 2
+ACTION_TYPE_SIGN        = 2
+ACTION_TYPE_FLASH       = 3
 
 
 ; Action Format
@@ -27,6 +28,17 @@ ACTION_TYPE_FLASH       = 2
 ; 2-7:   Parameters+padding
 
 ; Dialog - display a word balloon
+;------------------------------------------
+; 0:     01
+; 1:     Next
+; 2:     StringPtr
+; 4:     Width
+; 5:     Height
+; 6:     Padding
+;
+; Mode = refresh + wait
+
+; Dialog - display a sign
 ;------------------------------------------
 ; 0:     01
 ; 1:     Next
@@ -87,10 +99,10 @@ actionTable:
     .byte   0,0                     ; Padding
 
 ; 1 - Sign
-    .byte   ACTION_TYPE_DIALOG
+    .byte   ACTION_TYPE_SIGN
     .byte   0                       ; Next dialog
     .word   dialogStringSign
-    .byte   26,4                    ; width, height
+    .byte   36,5                    ; width, height
     .byte   0,0                     ; Padding
 
 ; 2
@@ -104,7 +116,7 @@ actionTable:
     .byte   ACTION_TYPE_DIALOG
     .byte   0                       ; Next dialog
     .word   dialogStringOink
-    .byte   14,4                    ; width, height
+    .byte   14,3                    ; width, height
     .byte   0,0                     ; Padding
 
 ; 4
@@ -134,7 +146,10 @@ actionTable:
     String      "GAME!"   
    
  dialogStringSign:
-    String     "I AM A SIGN"   
+    StringCont  "  HOW TO PLAY:"
+    StringCont  " ARROWS TO MOVE"
+    String      "SPACE TO INTERACT"
+
 
  dialogStringHello:
     String     "HELLO."   
