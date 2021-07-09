@@ -786,19 +786,15 @@ loop_y:
     clc
     adc     indexY
     sta     temp
-    lsr
-    lsr     ; /4
+    lsr     ; /2
     clc
     adc     #>MAPSHEET
     sta     mapPtr1
 
     lda     temp
-    asl
-    asl
-    asl
-    asl
-    asl
-    asl                 ; * MAP_WIDTH (64)
+    ror
+    ror
+    and     #$80        ; *128
     sta     mapPtr0     ; assume 256 aligned
 
     lda     #0
@@ -817,9 +813,10 @@ loop_x:
     adc     #MAP_X_OFFSET
     sta     tileX
 
-    lda     mapX
     clc
+    lda     mapX
     adc     indexX
+    asl     ; *2
     tay
     lda     (mapPtr0),y
     jsr     drawTile_14x16
@@ -949,19 +946,15 @@ waitExit:
 .proc setWorldMapPtr
 
     lda     worldY
-    lsr
-    lsr     ; /4
+    lsr     ; /2
     clc
     adc     #>MAPSHEET
     sta     mapPtr1
 
     lda     worldY
-    asl
-    asl
-    asl
-    asl
-    asl
-    asl                 ; * MAP_WIDTH (64)
+    ror
+    ror
+    and     #$80        ; * MAP_WIDTH (64)
     sta     mapPtr0     ; assume 256 aligned
     rts
 
@@ -975,7 +968,9 @@ waitExit:
 .proc getTile
 
     jsr     setWorldMapPtr
-    ldy     worldX
+    lda     worldX
+    asl     ; *2
+    tay
     lda     (mapPtr0),y
     rts
 
@@ -989,7 +984,9 @@ waitExit:
 .proc setTile
     sta     temp
     jsr     setWorldMapPtr
-    ldy     worldX
+    lda     worldX
+    asl     ; *2
+    tay
     lda     temp
     sta     (mapPtr0),y
     sta     cursorTile      ; update cursor
@@ -1047,7 +1044,7 @@ rowCount:   .byte   0
 
 printRow:
     jsr     inline_print
-    .byte   13,".byte ",0
+    .byte   13,".word ",0
 
     lda     #0
     sta     dumpCount
@@ -1056,20 +1053,25 @@ dump_comma:
     lda     #$80 + ','
     jsr     COUT
 dump_loop:
+    lda     #$a0
+    jsr     COUT
+    lda     #$a0
+    jsr     COUT                ; prepend 2 spaces for FG edits
     lda     #$80 + '$'
     jsr     COUT
     ldy     dumpCount
     lda     (mapPtr0),y
     jsr     PRBYTE
     inc     dumpCount
+    inc     dumpCount   ; by 2
     lda     dumpCount
-    cmp     #MAP_WIDTH
+    cmp     #MAP_WIDTH*2
     beq     dump_finish
     lda     dumpCount
     and     #$f
     bne     dump_comma
     jsr     inline_print
-    .byte   13,".byte ",0
+    .byte   13,".word ",0
     jmp     dump_loop
 
 dump_finish:

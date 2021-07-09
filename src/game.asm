@@ -40,11 +40,11 @@ MAP_X_OFFSET        =   6
 MAP_Y_OFFSET        =   6   ; must be even
 MAP_SCREEN_WIDTH    =   7
 MAP_SCREEN_HEIGHT   =   7
-MAP_CENTER          =   (3*7)+3
-MAP_UP              =   MAP_CENTER-MAP_SCREEN_WIDTH
-MAP_DOWN            =   MAP_CENTER+MAP_SCREEN_WIDTH
-MAP_LEFT            =   MAP_CENTER-1
-MAP_RIGHT           =   MAP_CENTER+1
+MAP_CENTER          =   2*((3*7)+3)
+MAP_UP              =   MAP_CENTER-2*MAP_SCREEN_WIDTH
+MAP_DOWN            =   MAP_CENTER+2*MAP_SCREEN_WIDTH
+MAP_LEFT            =   MAP_CENTER-2
+MAP_RIGHT           =   MAP_CENTER+2
 
 PLAYER_RIGHT        =   0
 PLAYER_LEFT         =   1
@@ -914,6 +914,7 @@ loopx:
     jsr     DHGR_DRAW_FG_14X16
 
 continue:
+    inc     mapIndex
     inc     mapIndex
 
     lda     tileX

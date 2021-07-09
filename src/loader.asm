@@ -41,7 +41,7 @@
 READBUFFER      :=  $4000    ; Share read buffer with page2
 
 MAPSTART        :=  $6000
-MAPLENGTH       =   64*64
+MAPLENGTH       =   64*64*2
 MAPEND          :=  READBUFFER + MAPLENGTH - 1
 
 DIALOGSTART     :=  $8000

@@ -439,27 +439,26 @@ screenPtr1Copy: .byte   0
 ; readMap
 ;   Copy the visible portion of the map into a buffer
 ;
-;   This function will read from aux memory and write to main memory
+;   This function reads from aux memory and writes to main memory
 ;-----------------------------------------------------------------------------
 
 .proc readMap
 
     ; calc map pointer
     lda     mapWindowY
-    lsr
-    lsr                 ; /4
+    lsr                 ; /2
     clc
     adc     mapSheet+1
     sta     mapPtr1
 
 
     lda     mapWindowY
-    ror                 ; * 64
+    ror                 ; * 128
     ror
-    ror
-    and     #$c0
+    and     #$80
     clc
     adc     mapWindowX
+    adc     mapWindowX  ; * 2
     sta     mapPtr0     ; assume 256 aligned
 
 
@@ -474,6 +473,7 @@ screenPtr1Copy: .byte   0
 
 loopy:
     lda     mapWindowWidth
+    asl     ; *2
     sta     loopCountX
 
     ldy     #0
@@ -496,7 +496,7 @@ loopx:
     ; move to next line
     clc
     lda     mapPtr0
-    adc     #64
+    adc     #128
     sta     mapPtr0
 
     lda     mapPtr1
