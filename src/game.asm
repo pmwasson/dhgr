@@ -50,8 +50,6 @@ PLAYER_RIGHT        =   0
 PLAYER_LEFT         =   1
 
 DIALOG_BOTTOM       =   MAP_Y_OFFSET + 3*2
-;DIALOG_LEFT         =   MAP_X_OFFSET
-;DIALOG_RIGHT        =   MAP_X_OFFSET + MAP_SCREEN_WIDTH*4 - 2
 DIALOG_LEFT         =   2
 DIALOG_RIGHT        =   36
 DIALOG_X_LEFT       =   10
@@ -96,31 +94,76 @@ DIALOG_X_RIGHT      =   26
     sta     mapWindowY
     jsr     DHGR_READ_MAP
 
+
+
+    ;-----------------------
+    ; Game Loop
+    ;-----------------------
+    ;
+    ; - Page flip
+    ; - If refresh, clear screen and draw boarder
+    ; - Draw screen
+    ; - Mode
+    ;   - Wait: wait for space-bar, process next
+    ;   - Continue: process next right away
+    ;   - User: get user input
+    ;     - If start new action, process new
+    ;
+    ; Processing an action means to draw action and update state
+
+    ; - Get input based on mode
+    ;   - If player input, can trigger new action
+    ; - Process next
+    ; - If action is triggered
+    ;   - Draw action
+    ;   - If drawing > map, trigger refresh
+
+
 gameLoop:
 
+    ;-----------------------
+    ; Page Flip
+    ;-----------------------
     jsr     flipPage        ; display final drawing from last iteration of game loop
 
-skipFlip:
 
+    ;-----------------------
+    ; Clear screen (if needed)
+    ;-----------------------
+    lda     refresh
+    beq     :+
+
+    jsr     clearScreen
+    jsr     drawFrame
+    lda     #0
+    sta     refresh
+:
+
+    ;-----------------------
     ; clock tick
+    ;-----------------------
     inc     gameTime
     lda     gameTime
     lsr
-    sta     animateTime
+    sta     animateTime         ; animate slower
 
+    ;-----------------------
     ; update screen
+    ;-----------------------
     jsr     drawScreen
 
     ;-------------------
-    ; Dialog
+    ; action
     ;-------------------
 
-    lda     dialogAction
-    beq     normalInput
+    lda     actionType
+    beq     playerInput
 
-    jsr     drawDialog
+    lda     actionRefresh
+    sta     refresh         ; set if need to clear screen next time
 
-    jsr     flipPage        ; display dialog
+    lda     actionWait      ; set if need to wait for spacebar to continue
+    beq     action_continue
 
     ; any key to clear
 :
@@ -128,29 +171,23 @@ skipFlip:
     cmp     #KEY_SPACE
     bne     :-
     sta     KBDSTRB
+ 
+ action_continue:
 
-    jsr     flipPage        ; display previous non-dialog page while we clean up
-
-    ; refresh
-    jsr     clearScreen
-    jsr     drawFrame
-
+    ; clear current action
     lda     #0
-    sta     dialogAction
+    sta     actionType
 
     ; Check for link
 
-    lda     dialogNext
-    beq     skipFlip
+    lda     actionNext
+    beq     gameLoop
+    sta     actionIndex
+    jsr     readAction
 
-    lda     dialogNext
-    sta     dialogIndex
+    jmp     gameLoop
 
-    jsr     readDialog
-
-    jmp     skipFlip
-
-normalInput:
+playerInput:
     ;-------------------
     ; Input
     ;-------------------
@@ -231,9 +268,9 @@ done_right:
     bne     :+
 
     lda     #0
-    sta     dialogIndex
+    sta     actionIndex
 
-    jsr     readDialog
+    jsr     readAction
 
     jmp     gameLoop
 
@@ -657,7 +694,7 @@ loop:
     ldy     #0
 
     ; aux mem
-    lda     #0
+    lda     clearColor
     sta     RAMWRTON  
 
 :
@@ -881,51 +918,88 @@ animateIndex:   .byte   0
 
 
 ;-----------------------------------------------------------------------------
-; Process dialog
+; Read action
 ;
+;   Read entry and process action
 ;-----------------------------------------------------------------------------
 
-dialogPtr       = A2              ; Use A2 for temp pointer
+actionPtr       = A2              ; Use A2 for temp pointer
 
-.proc readDialog
+.proc readAction
 
     ; Set up pointer
-    lda     dialogIndex
+    lda     actionIndex
     asl                     ; *8
     asl                     
     asl                     
-    sta     dialogPtr
+    sta     actionPtr
 
-    ; FIXME, need more than 32 dialogs
+    ; FIXME, need more than 32 actions
 
-    lda     #>dialogTable   ; Table must be page aligned 
-    sta     dialogPtr+1
+    lda     #>actionTable   ; Table must be page aligned 
+    sta     actionPtr+1
 
-    ; set string pointer
-
-    ldy     #0
-    lda     (dialogPtr),y
-    sta     stringPtr0
-    iny
-    lda     (dialogPtr),y
-    sta     stringPtr1
-
-    ; action
-    iny
-    lda     (dialogPtr),y
-    sta     dialogAction
+    ; Set output defaults
+    lda     #0
+    sta     actionWait
+    sta     actionRefresh
 
     ; next
-    ldy     #5
-    lda     (dialogPtr),y
-    sta     dialogNext
+    ldy     #1
+    lda     (actionPtr),y
+    sta     actionNext
+
+    ; type
+    ldy     #0
+    lda     (actionPtr),y
+    sta     actionType
+
+    cmp     #ACTION_TYPE_DIALOG
+    bne     :+
+
+    jmp     readActionDialog    ; link return
+:
+
+
+    cmp     #ACTION_TYPE_FLASH
+    bne     :+
+
+    lda     #$ff
+    sta     clearColor
+    jsr     clearScreen
+    lda     #0
+    sta     clearColor
+    inc     actionRefresh
+
+    rts
+
+:
+    ; Default to nothing
+    rts
+
+.endproc
+
+;-----------------------------------------------------------------------------
+; Read action: Dialog
+;-----------------------------------------------------------------------------
+
+.proc readActionDialog
+
+    ; set string pointer
+    ldy     #2
+    lda     (actionPtr),y
+    sta     stringPtr0
+    iny     ; 3
+    lda     (actionPtr),y
+    sta     stringPtr1
+
 
     ; Top = bottom - height
 
     lda     #DIALOG_BOTTOM
-    ldy     #4              ; height
+    ldy     #5              ; height
     sec
-    sbc     (dialogPtr),y
+    sbc     (actionPtr),y
     sta     dialogTop
 
     ; Left / Right based on direction player is facing
@@ -938,28 +1012,35 @@ dialogPtr       = A2              ; Use A2 for temp pointer
     lda     #DIALOG_RIGHT
     sta     dialogRight
 
-    ldy     #3              ; width
+    ldy     #4              ; width
     sec
-    sbc     (dialogPtr),y
+    sbc     (actionPtr),y
     sta     dialogLeft
 
     lda     #DIALOG_X_RIGHT
     sta     dialogX
 
-    rts
+    jmp     finish
 
 dialog_left:
 
     lda     #DIALOG_LEFT
     sta     dialogLeft
 
-    ldy     #3              ; width
+    ldy     #4              ; width
     clc
-    adc     (dialogPtr),y
+    adc     (actionPtr),y
     sta     dialogRight
 
     lda     #DIALOG_X_LEFT
     sta     dialogX
+
+finish:
+    lda     #1
+    sta     actionWait
+    sta     actionRefresh
+
+    jsr     drawDialog
 
     rts
 
@@ -994,9 +1075,11 @@ quit_params:
 ;-----------------------------------------------------------------------------
 ; Global Variables
 
+refresh:            .byte   0
 gameTime:           .byte   0
 animateTime:        .byte   0
 playerTile:         .byte   0
+clearColor:         .byte   0
 
 ; Box routine   
 boxLeft:            .byte   0
@@ -1005,15 +1088,18 @@ boxTop:             .byte   0
 boxBottom:          .byte   0
 
 ; Dialog
-dialogIndex:        .byte   0
 dialogLeft:         .byte   0
 dialogRight:        .byte   0
 dialogTop:          .byte   0
 dialogX:            .byte   0
 dialogDir:          .byte   0
-dialogAction:       .byte   0
-dialogNext:         .byte   0
 
+; Action
+actionIndex:        .byte   0
+actionType:         .byte   0
+actionNext:         .byte   0
+actionWait:         .byte   0
+actionRefresh:      .byte   0
 
 
 ;-----------------------------------------------------------------------------
@@ -1150,55 +1236,7 @@ animateOffset:
 
 
 ;-----------------------------------------------------------------------------
-; Dialog
 
-.align 256
+.include "action.asm"
 
-DIALOG_ACTION_NONE      = 0
-DIALOG_ACTION_DISPLAY   = 1
-
-dialogTable:
-
-; width =  (1+maxcol)*2 (range = 10 - 26)
-; height = 2 + rows
-
-; 0
-    .word   dialogString0
-    .byte   DIALOG_ACTION_DISPLAY
-    .byte   30,4                    ; width, height
-    .byte   1                       ; Next dialog
-    .byte   0,0                     ; Padding
-
-; 1
-    .word   dialogString1
-    .byte   DIALOG_ACTION_DISPLAY
-    .byte   28,6                    ; width, height
-    .byte   0                       ; Next dialog
-    .byte   0,0                     ; Padding
-
-
-; max characters in a line: 16
-; max rows = 10
-;
-;                0123456789abcdef
-;                1              .
-;                2              .
-;                3              .
-;                4              .
-;                5              .
-;                6              .
-;                7              .
-;                8              .
-;                9...............
-
- dialogString0:
-    StringCont  "WELCOME TO THE"   
-    String      "GAME!"   
-
- dialogString1:
-    StringCont  "USE THE ARROW"   
-    StringCont  "KEYS TO MOVE"   
-    StringCont  "AND SPACE TO"   
-    String      "INTERACT."   
-   
 
