@@ -120,9 +120,23 @@ actionTable:
     .byte   0,0                     ; Padding
 
 ; 4
+    .byte   ACTION_TYPE_DIALOG
+    .byte   5                       ; Next dialog
+    .word   dialogStringZap
+    .byte   14,3                    ; width, height
+    .byte   0,0                     ; Padding
+
+; 5
     .byte   ACTION_TYPE_FLASH
-    .byte   0
+    .byte   6
     .byte   0,0,0,0,0,0
+
+; 6
+    .byte   ACTION_TYPE_DIALOG
+    .byte   0                       ; Next dialog
+    .word   dialogStringHaHa
+    .byte   14,3                    ; width, height
+    .byte   0,0                     ; Padding
 
 ; width =  (1+maxcol)*2 (range = 14 - 26)
 ; height = 2 + rows
@@ -156,4 +170,11 @@ actionTable:
 
  dialogStringOink:
     String     " OINK!"   
+
+ dialogStringZap:
+    String     "ZAP!!!"   
+
+ dialogStringHaHa:
+    String     "HA HA!"   
+
 
