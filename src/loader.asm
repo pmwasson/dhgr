@@ -14,12 +14,12 @@
 ;
 ;               Main                Aux
 ;
-;   0000-0BFF   [ System usage / text pages     ]
+;   0000-07FF   [ System usage / text pages     ]
 ;
 ;   0800-09FF   [ ProDos buffer ][ Unused       ]
 ;
-;   0A00-0BFF   [ Unused                        ]
-;
+;   0A00-0AFF   [ Unused                        ]
+;   0B00-0BFF   [ Map Buffer    ][ Unused       ]
 ;   0C00-1FFF   [ Engine routines               ]
 ;
 ;   2000-3FFF   [ DGHR Page 1                   ]
@@ -37,6 +37,7 @@
 ;
 ;   B000-B7FF   [ Font Tiles (128)              ]
 ;
+;   ProDos buffer only need if need to load/save
 
 READBUFFER      :=  $4000    ; Share read buffer with page2
 

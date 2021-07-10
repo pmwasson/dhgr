@@ -209,10 +209,9 @@ playerInput:
     bne     :+
     lda     mapWindowY
     beq     done_up
-    ldy     MAP_BUFFER+MAP_UP
-    lda     bgInfoTable,y
-    and     #COLLISION
-    bne     done_up
+    ldy     #MAP_UP
+    jsr     collisionCheck
+    bcs     done_up
     dec     mapWindowY
 done_up:
     jmp     gameLoop
@@ -223,10 +222,9 @@ done_up:
     lda     mapWindowY
     cmp     #MAP_HEIGHT-MAP_SCREEN_HEIGHT
     beq     done_down
-    ldy     MAP_BUFFER+MAP_DOWN
-    lda     bgInfoTable,y
-    and     #COLLISION
-    bne     done_down
+    ldy     #MAP_DOWN
+    jsr     collisionCheck
+    bcs     done_down
     inc     mapWindowY
 done_down:
     jmp     gameLoop
@@ -238,10 +236,9 @@ done_down:
     sta     playerTile
     lda     mapWindowX
     beq     done_left
-    ldy     MAP_BUFFER+MAP_LEFT
-    lda     bgInfoTable,y
-    and     #COLLISION
-    bne     done_left
+    ldy     #MAP_LEFT
+    jsr     collisionCheck
+    bcs     done_left
     dec     mapWindowX
 done_left:
     jmp     gameLoop
@@ -254,10 +251,9 @@ done_left:
     lda     mapWindowX
     cmp     #MAP_WIDTH-MAP_SCREEN_WIDTH
     beq     done_right
-    ldy     MAP_BUFFER+MAP_RIGHT
-    lda     bgInfoTable,y
-    and     #COLLISION
-    bne     done_right
+    ldy     #MAP_RIGHT
+    jsr     collisionCheck
+    bcs     done_right
     inc     mapWindowX
 done_right:
     jmp     gameLoop
@@ -316,6 +312,32 @@ do_action:
 :
 
     jmp     gameLoop
+
+.endproc
+
+;------------------------------------------------
+; Collision check
+;
+;  Pass location to check in Y
+;  Set carry if collision
+;------------------------------------------------
+
+.proc collisionCheck
+
+    ldx     MAP_BUFFER,y
+    lda     bgInfoTable,x
+    iny
+    ldx     MAP_BUFFER,y
+    ora     fgInfoTable,x
+    and     #COLLISION
+    bne     collision
+
+    clc
+    rts
+
+collision:
+    sec
+    rts
 
 .endproc
 
