@@ -31,8 +31,8 @@ DIALOG_RT       = $40+11
 DIALOG_LL       = $40+12
 DIALOG_LO       = $40+13
 DIALOG_LR       = $40+14
-DIALOG_LS       = 2
-DIALOG_RS       = 3
+DIALOG_LS       = 0
+DIALOG_RS       = 1
 
 MAP_WIDTH           =  64
 MAP_HEIGHT          =  64
@@ -46,8 +46,9 @@ MAP_DOWN            =   MAP_CENTER+2*MAP_SCREEN_WIDTH
 MAP_LEFT            =   MAP_CENTER-2
 MAP_RIGHT           =   MAP_CENTER+2
 
-PLAYER_RIGHT        =   0
-PLAYER_LEFT         =   1
+; Tile for player direction
+PLAYER_RIGHT        =   4
+PLAYER_LEFT         =   5
 
 DIALOG_BOTTOM       =   MAP_Y_OFFSET + 3*2
 DIALOG_LEFT         =   2
@@ -844,8 +845,13 @@ temp:       .byte   0
 
 .proc drawMap
 
+    ; FIXME: optmize by only reading map if moved
     ; Read map buffer
     jsr     DHGR_READ_MAP
+
+    ; Draw player
+    lda     playerTile
+    sta     MAP_BUFFER+MAP_CENTER+1
 
     lda     #0
     sta     mapIndex
@@ -868,7 +874,7 @@ loopx:
 
 
     ;---------------------
-    ; Set background tile
+    ; Draw background tile
     ;---------------------
 
     ; Update animation index
@@ -898,23 +904,40 @@ loopx:
 :
 
     sta     bgTile
-
-    ;---------------------
-    ; Draw tile
-    ;---------------------
-
     jsr     DHGR_DRAW_14X16
 
-    lda     mapIndex
-    cmp     #MAP_CENTER
-    bne     continue
+    ;---------------------
+    ; Draw foreground tile
+    ;---------------------
 
-    lda     playerTile
+    inc     mapIndex
+    ldy     mapIndex
+    lda     MAP_BUFFER,y
+    beq     continue
+
+    ; Apply animation
+    tax                         ; x = tile
+    ldy     fgInfoTable,x       ; y = animation base
+    bpl     :+
+
+    tya
+    clc
+    and     #$E0
+    adc     animateIndex
+    tay
+    txa
+    clc
+    adc     animateOffset,y     ; add offset
+:
+
     sta     fgTile
     jsr     DHGR_DRAW_FG_14X16
 
+    ;---------------------
+    ; Update pointers
+    ;---------------------
+
 continue:
-    inc     mapIndex
     inc     mapIndex
 
     lda     tileX
@@ -1033,9 +1056,11 @@ actionPtr       = A2              ; Use A2 for temp pointer
     ; Left / Right based on direction player is facing
 
     lda     playerTile
-    sta     dialogDir
     cmp     #PLAYER_RIGHT
     bne     dialog_left
+
+    lda     #0
+    sta     dialogDir
 
     lda     #DIALOG_RIGHT
     sta     dialogRight
@@ -1051,6 +1076,9 @@ actionPtr       = A2              ; Use A2 for temp pointer
     jmp     finish
 
 dialog_left:
+
+    lda     #1
+    sta     dialogDir
 
     lda     #DIALOG_LEFT
     sta     dialogLeft
@@ -1162,7 +1190,7 @@ quit_params:
 refresh:            .byte   0
 gameTime:           .byte   0
 animateTime:        .byte   0
-playerTile:         .byte   0
+playerTile:         .byte   PLAYER_RIGHT
 clearColor:         .byte   0
 
 ; Box routine   
@@ -1270,8 +1298,43 @@ bgInfoTable:
     .byte   $00                                             ; 3e
     .byte   $00                                             ; 3f
 
-; Overlap animate offset with animate table since 0-f invalid
-    .res    $40
+fgInfoTable:
+; Collision and animation offset for each tile
+    .byte   $00                                             ; 00
+    .byte   $00                                             ; 01
+    .byte   $00                                             ; 02
+    .byte   $00                                             ; 03
+    .byte   $00                                             ; 04
+    .byte   $00                                             ; 05
+    .byte   $00                                             ; 06
+    .byte   $00                                             ; 07
+    .byte   COLLISION+ANIMATE_BLINK                         ; 08 - Bee Boy
+    .byte   $00                                             ; 09
+    .byte   $00                                             ; 0a
+    .byte   $00                                             ; 0b
+    .byte   $00                                             ; 0c
+    .byte   $00                                             ; 0d
+    .byte   $00                                             ; 0e
+    .byte   $00                                             ; 0f
+    .byte   $00                                             ; 10
+    .byte   $00                                             ; 11
+    .byte   $00                                             ; 12
+    .byte   $00                                             ; 13
+    .byte   $00                                             ; 14
+    .byte   $00                                             ; 15
+    .byte   $00                                             ; 16
+    .byte   $00                                             ; 17
+    .byte   $00                                             ; 18
+    .byte   $00                                             ; 19
+    .byte   $00                                             ; 1a
+    .byte   $00                                             ; 1b
+    .byte   $00                                             ; 1c
+    .byte   $00                                             ; 1d
+    .byte   $00                                             ; 1e
+    .byte   $00                                             ; 1f
+
+    .res    $20
+
 
     ; 80 - water
     .byte   0
