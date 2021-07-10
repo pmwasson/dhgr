@@ -1276,12 +1276,31 @@ dump_comma:
     lda     #$80 + ','
     jsr     COUT
 dump_loop:
+
+    ; to highlight actions, print spaces if no action
+    ldy     dumpCount
+    iny
+    lda     (mapPtr0),y
+    sta     action
+    beq     no_action
+
+    ; upper byte
+    lda     #$80 + '$'
+    jsr     COUT
+
+    lda     action
+    jsr     PRBYTE
+    jmp     bg_number
+
+no_action:
     lda     #$a0
     jsr     COUT
     lda     #$a0
     jsr     COUT                ; prepend 2 spaces for FG edits
     lda     #$80 + '$'
     jsr     COUT
+
+bg_number:    
     ldy     dumpCount
     lda     (mapPtr0),y
     jsr     PRBYTE
@@ -1302,7 +1321,8 @@ dump_finish:
     jsr     COUT
     rts
 
-dumpCount: .byte   0
+dumpCount:  .byte   0
+action:     .byte   0
 
 .endproc
 
