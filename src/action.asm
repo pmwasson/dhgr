@@ -102,14 +102,14 @@ actionTable:
     .byte   ACTION_TYPE_SIGN
     .byte   0                       ; Next dialog
     .word   dialogStringSign
-    .byte   36,5                    ; width, height
+    .byte   32,8                    ; width, height
     .byte   0,0                     ; Padding
 
 ; 2
     .byte   ACTION_TYPE_DIALOG
     .byte   0                       ; Next dialog
     .word   dialogStringHello
-    .byte   14,4                    ; width, height
+    .byte   14,3                    ; width, height
     .byte   0,0                     ; Padding
 
 ; 3
@@ -160,9 +160,12 @@ actionTable:
     String      "GAME!"   
    
  dialogStringSign:
-    StringCont  "  HOW TO PLAY:"
-    StringCont  " ARROWS TO MOVE"
-    String      "SPACE TO INTERACT"
+    StringCont  "HOW TO PLAY:"
+    StringCont  "@ARROWS TO MOVE"
+    StringCont  "@SPACE TO"
+    StringCont  " INTERACT"
+    StringCont  "@STEP ON ITEMS"
+    String      " TO PICK UP"
 
 
  dialogStringHello:

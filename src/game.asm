@@ -270,29 +270,13 @@ done_right:
     cmp     #PLAYER_RIGHT
     beq     action_right
 
-    ldy     MAP_BUFFER+MAP_LEFT+1
-    lda     fgInfoTable,y
-
-    and     #TILE_ACTION
-    bne     do_action
-
-    ldy     MAP_BUFFER+MAP_LEFT
-    lda     bgInfoTable,y
-
-    and     #TILE_ACTION
+    lda     MAP_BUFFER+MAP_LEFT+1
     bne     do_action
 
     jmp     gameLoop
 
 action_right:
-    ldy     MAP_BUFFER+MAP_RIGHT+1
-    lda     fgInfoTable,y
-    and     #TILE_ACTION
-    bne     do_action
-
-    ldy     MAP_BUFFER+MAP_RIGHT
-    lda     bgInfoTable,y
-    and     #TILE_ACTION
+    lda     MAP_BUFFER+MAP_RIGHT+1
     bne     do_action
 
     jmp     gameLoop
@@ -311,6 +295,9 @@ do_action:
 
     cmp     #KEY_ESC
     bne     :+
+
+    jsr    inline_print
+    StringCR "Press CTRL-Y for ProDOS program launcher"
 
     ; Set ctrl-y vector
     lda     #$4c        ; JMP
@@ -339,9 +326,6 @@ do_action:
 
     ldx     MAP_BUFFER,y
     lda     bgInfoTable,x
-    iny
-    ldx     MAP_BUFFER,y
-    ora     fgInfoTable,x
     and     #COLLISION
     bne     collision
 
@@ -884,9 +868,9 @@ temp:       .byte   0
     ; Read map buffer
     jsr     DHGR_READ_MAP
 
-    ; Draw player
-    lda     playerTile
-    sta     MAP_BUFFER+MAP_CENTER+1
+ ;   ; Draw player
+ ;   lda     playerTile
+ ;   sta     MAP_BUFFER+MAP_CENTER+1
 
     lda     #0
     sta     mapIndex
@@ -946,24 +930,33 @@ loopx:
     ;---------------------
 
     inc     mapIndex
-    ldy     mapIndex
-    lda     MAP_BUFFER,y
-    beq     continue
 
-    ; Apply animation
-    tax                         ; x = tile
-    ldy     fgInfoTable,x       ; y = animation base
-    bpl     :+
+    ; FIXME -- just starting player for now
+    lda     mapIndex
+    cmp     #MAP_CENTER+1
+    bne     continue
 
-    tya
-    clc
-    and     #$E0
-    adc     animateIndex
-    tay
-    txa
-    clc
-    adc     animateOffset,y     ; add offset
-:
+    lda     playerTile
+
+
+;    ldy     mapIndex
+;    lda     MAP_BUFFER,y
+;    beq     continue
+;
+;    ; Apply animation
+;    tax                         ; x = tile
+;    ldy     fgInfoTable,x       ; y = animation base
+;    bpl     :+
+;
+;    tya
+;    clc
+;    and     #$E0
+;    adc     animateIndex
+;    tay
+;    txa
+;    clc
+;    adc     animateOffset,y     ; add offset
+;:
 
     sta     fgTile
     jsr     DHGR_DRAW_FG_14X16
@@ -1218,6 +1211,7 @@ quit_params:
 ; Utilies
 
 .include "sounds.asm"
+.include "inline_print.asm"
 
 ;-----------------------------------------------------------------------------
 ; Global Variables
@@ -1252,16 +1246,10 @@ actionRefresh:      .byte   0
 ;-----------------------------------------------------------------------------
 ; Tile Dynamic Info
 
-COLLISION           = $10
-TILE_ACTION         = $0F       ; Up to 15 background actions
+COLLISION           = $01
 ANIMATE_WATER       = $80
 ANIMATE_BLINK       = $a0
 ANIMATE_ALTERNATE   = $c0
-
-ACTION_SIGN         = $1
-ACTION_HELLO        = $2
-ACTION_OINK         = $3
-ACTION_FLASH        = $4
 
 .align 256
 
@@ -1280,7 +1268,7 @@ bgInfoTable:
     .byte   $00                                             ; 09 - Forest Path 1
     .byte   $00                                             ; 0a - Forest Path 2
     .byte   $00                                             ; 0b - Forest Path 3
-    .byte   COLLISION+ACTION_SIGN                           ; 0c - Wooden Sign
+    .byte   COLLISION                                       ; 0c - Wooden Sign
     .byte   $00                                             ; 0d - Gravel Path
     .byte   $00                                             ; 0e - Snow Cover
     .byte   COLLISION                                       ; 0f - Snow Tree
@@ -1301,17 +1289,17 @@ bgInfoTable:
     .byte   COLLISION                                       ; 1e - Chair - left
     .byte   COLLISION                                       ; 1f - Table
     .byte   $00                                             ; 20 - Tile
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 21 - Girl-1
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 22 - Girl-2
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 23 - Bee Boy-1
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 24 - Bee Boy-2
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 25 - Octo-1
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 26 - Octo-2
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_OINK             ; 27 - Pig-1
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_OINK             ; 28 - Pig-2
-    .byte   COLLISION+ANIMATE_ALTERNATE+ACTION_FLASH        ; 29 - Doll-1
-    .byte   COLLISION+ANIMATE_ALTERNATE+ACTION_FLASH        ; 2a - Doll-2
-    .byte   COLLISION+ACTION_HELLO                          ; 2b - Snail
+    .byte   COLLISION+ANIMATE_BLINK                         ; 21 - Girl-1
+    .byte   COLLISION+ANIMATE_BLINK                         ; 22 - Girl-2
+    .byte   COLLISION+ANIMATE_BLINK                         ; 23 - Bee Boy-1
+    .byte   COLLISION+ANIMATE_BLINK                         ; 24 - Bee Boy-2
+    .byte   COLLISION+ANIMATE_BLINK                         ; 25 - Octo-1
+    .byte   COLLISION+ANIMATE_BLINK                         ; 26 - Octo-2
+    .byte   COLLISION+ANIMATE_BLINK                         ; 27 - Pig-1
+    .byte   COLLISION+ANIMATE_BLINK                         ; 28 - Pig-2
+    .byte   COLLISION+ANIMATE_ALTERNATE                     ; 29 - Doll-1
+    .byte   COLLISION+ANIMATE_ALTERNATE                     ; 2a - Doll-2
+    .byte   COLLISION                                       ; 2b - Snail
     .byte   COLLISION+ANIMATE_WATER                         ; 1c - Lily Pad 1
     .byte   COLLISION+ANIMATE_WATER                         ; 1d - Lily Pad 2
     .byte   COLLISION+ANIMATE_WATER                         ; 1e - Lily Pad 3
@@ -1333,42 +1321,7 @@ bgInfoTable:
     .byte   $00                                             ; 3e
     .byte   $00                                             ; 3f
 
-fgInfoTable:
-; Collision and animation offset for each tile
-    .byte   $00                                             ; 00
-    .byte   $00                                             ; 01
-    .byte   $00                                             ; 02
-    .byte   $00                                             ; 03
-    .byte   $00                                             ; 04
-    .byte   $00                                             ; 05
-    .byte   $00                                             ; 06
-    .byte   $00                                             ; 07
-    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 08 - Bee Boy
-    .byte   $00                                             ; 09
-    .byte   $00                                             ; 0a
-    .byte   $00                                             ; 0b
-    .byte   $00                                             ; 0c
-    .byte   $00                                             ; 0d
-    .byte   $00                                             ; 0e
-    .byte   $00                                             ; 0f
-    .byte   $00                                             ; 10
-    .byte   $00                                             ; 11
-    .byte   $00                                             ; 12
-    .byte   $00                                             ; 13
-    .byte   $00                                             ; 14
-    .byte   $00                                             ; 15
-    .byte   $00                                             ; 16
-    .byte   $00                                             ; 17
-    .byte   $00                                             ; 18
-    .byte   $00                                             ; 19
-    .byte   $00                                             ; 1a
-    .byte   $00                                             ; 1b
-    .byte   $00                                             ; 1c
-    .byte   $00                                             ; 1d
-    .byte   $00                                             ; 1e
-    .byte   $00                                             ; 1f
-
-    .res    $20
+    .res    $40
 
 
     ; 80 - water
