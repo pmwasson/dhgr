@@ -1026,7 +1026,7 @@ print_loop:
 
     lda     mapPtr0
     clc
-    adc     #MAP_WIDTH
+    adc     #MAP_WIDTH*2
     sta     mapPtr0
     bne     :+
     inc     mapPtr1
@@ -1068,7 +1068,7 @@ dump_loop:
     cmp     #MAP_WIDTH*2
     beq     dump_finish
     lda     dumpCount
-    and     #$f
+    and     #$1f
     bne     dump_comma
     jsr     inline_print
     .byte   13,".word ",0
