@@ -211,7 +211,7 @@ loop:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; Draaw String
+; Draw String
 ;
 ;   Use tileX and tileY for start and string inlined
 ;-----------------------------------------------------------------------------
@@ -563,6 +563,76 @@ temp0:  .byte   0
     adc     currentSheet_14x16+1
     sta     bgPtr1
     rts
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
+; Draw Highlight 14x16
+;
+;   Highlight an already drawn tile by putting a light through the middle
+;   in the passed in color.
+;
+;   A = color (repeated in upper nibble)
+;-----------------------------------------------------------------------------
+
+.proc drawHighlight_14x16
+
+    sta     color
+
+    ; calculate screen pointer
+    ldx     tileY
+    lda     tileX
+    clc
+    adc     lineOffset,x    ; + lineOffset
+    sta     screenPtr0    
+    lda     linePage,x
+    adc     #4*6            ; Offset into tile
+    sta     screenPtr1
+
+    sta     CLR80COL        ; Use RAMWRT for aux mem
+
+    lda     #2
+    sta     repeat
+
+loop:
+    lda     color
+    ldy     #0
+:
+    tax
+    sta     RAMWRTON
+    sta     (screenPtr0),y  ; aux memory
+    sta     RAMWRTOFF
+
+    ; rotate color
+    rol     ; set carry
+    txa     
+    rol
+
+    tax
+    sta     (screenPtr0),y  ; main memory
+
+    ; rotate color
+    rol     ; set carry
+    txa     
+    rol
+
+    iny
+    cpy     #4
+    bne     :-
+
+    clc
+    lda     #$4
+    adc     screenPtr1
+    sta     screenPtr1
+
+    dec     repeat
+    bne     loop
+
+    rts
+
+color:  .byte   0
+repeat: .byte   0
 
 .endproc
 

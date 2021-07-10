@@ -14,6 +14,8 @@ MAP_SCREEN_HEIGHT   =   7
 MAP_WIDTH           =   64
 MAP_HEIGHT          =   64
 
+HIGHLIGHT_COLOR     =   $0E     ; black/yellow
+
 ;------------------------------------------------
 ; Global scope (for map edit)
 ;------------------------------------------------
@@ -25,7 +27,6 @@ MAP_HEIGHT          =   64
 
     jsr     updateWorld
     jsr     getTile
-    sta     cursorTile
 
     rts
 .endproc
@@ -46,6 +47,9 @@ reset_loop:
     jsr     drawScreen
 
 command_loop:
+
+    jsr     drawStatus
+
     jsr     inline_print
     .byte   "Command:",0
 
@@ -387,6 +391,23 @@ save_exit:
 :
 
     ;------------------
+    ; Return = action
+    ;------------------
+    cmp     #KEY_RETURN
+    bne     :+
+    jsr     inline_print
+    .byte   "Enter action number:",0
+
+    lda     actionIndex
+    jsr     getInputHex
+    jsr     setAction
+
+    jmp     command_loop
+:
+
+
+
+    ;------------------
     ; Unknown
     ;------------------
     jsr     inline_print
@@ -446,8 +467,16 @@ finish_move2:
     jsr     inline_print
     .byte   " Tile:",0
     jsr     getTile
-    sta     cursorTile
+    lda     cursorTile
     jsr     PRBYTE
+
+    lda     actionIndex
+    beq     :+
+    jsr     inline_print
+    .byte   " Action:",0
+    lda     actionIndex
+    jsr     PRBYTE
+:    
     lda     #13
     jsr     COUT
     jmp     command_loop
@@ -502,6 +531,100 @@ max_digit:  .byte   0
 .endproc
 
 ;-----------------------------------------------------------------------------
+; getInputHex
+;   Modify passed in hex number
+;-----------------------------------------------------------------------------
+.proc getInputHex
+
+    sta     value
+    sta     cancelValue
+
+loop:
+    lda     value
+    jsr     PRBYTE
+
+    ; pre-shift value
+    lda     value
+    asl
+    asl
+    asl
+    asl
+    sta     shiftValue
+
+input_loop:
+    jsr     getInput
+
+    ; Between 0-9?
+    cmp     #KEY_0
+    bmi     not_digit
+    cmp     #KEY_9+1
+    bpl     not_digit
+
+    sec
+    sbc     #KEY_0
+    ora     shiftValue
+
+    jmp     new_value
+
+not_digit:
+    ; Between a-f?
+    cmp     #KEY_A
+    bmi     not_letter
+    cmp     #KEY_F+1
+    bpl     not_letter
+
+    sec
+    sbc     #KEY_A-10
+    ora     shiftValue
+
+    jmp     new_value
+
+not_letter:
+    cmp     #KEY_RETURN
+    bne     not_return
+
+    lda     #13
+    jsr     COUT
+
+    lda     value
+
+    rts
+
+not_return:
+    cmp     #KEY_ESC
+    bne     input_loop
+
+    lda     #$88
+    jsr     COUT
+    lda     #$88
+    jsr     COUT        ; move cursor back
+
+    lda     cancelValue
+    jsr     PRBYTE
+
+    lda     #13
+    jsr     COUT
+
+    lda     cancelValue     ; return original value
+    rts
+
+new_value:
+    sta     value
+    lda     #$88
+    jsr     COUT
+    lda     #$88
+    jsr     COUT        ; move cursor back
+    jmp     loop
+
+; local variable
+value:          .byte   0
+shiftValue:     .byte   0
+cancelValue:    .byte   0
+
+.endproc
+
+
+;-----------------------------------------------------------------------------
 ; Get input direction
 ;   Pick and diplay 1 of 4 directions or cancel
 ;-----------------------------------------------------------------------------
@@ -554,6 +677,7 @@ max_digit:  .byte   0
     .byte   "  Shift-0..9: Assign quick-bar to selected tile",13
     .byte   "  A,Z:        Scroll tile selection by 1",13
     .byte   "  Ctrl-A,Z:   Scroll tile selection by 5",13
+    .byte   "  Return:     Enter action number (hex)",13
     .byte   "  Ctrl-L:     Load map",13
     .byte   "  Ctrl-S:     Save map",13
     .byte   "  Ctrl-P:     Print map to output (printer)",13
@@ -599,6 +723,7 @@ max_digit:  .byte   0
     jsr     drawSelectBar
     jsr     drawQuickBar
     jsr     drawMap
+    jsr     drawStatus
 
     rts
 .endproc
@@ -768,6 +893,64 @@ index:      .byte   0
 
 .endproc
 
+;-----------------------------------------------------------------------------
+; Draw Hex
+;
+;-----------------------------------------------------------------------------
+.proc drawHex
+
+    sta     temp
+    lsr
+    lsr
+    lsr
+    lsr     ; / 4
+    jsr     drawInterfaceTile_7x8
+
+    inc     tileX
+    inc     tileX
+
+    lda     temp
+    and     #$f
+    jsr     drawInterfaceTile_7x8
+
+    inc     tileX
+    inc     tileX
+
+    rts
+
+temp:   .byte   0
+
+.endproc    
+
+;-----------------------------------------------------------------------------
+; Draw Status
+;
+;-----------------------------------------------------------------------------
+
+.proc drawStatus
+
+    lda     #0
+    sta     tileY
+    lda     #10
+    sta     tileX
+
+    lda     worldX
+    jsr     drawHex
+
+    jsr     drawString
+    .byte   ":",0
+
+    lda     worldY
+    jsr     drawHex
+
+    jsr     drawString
+    .byte   " ACTION:",0
+
+    lda     actionIndex
+    jsr     drawHex
+
+    rts
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; Draw Map
@@ -818,8 +1001,18 @@ loop_x:
     adc     indexX
     asl     ; *2
     tay
+    sty     temp        ; store offset
     lda     (mapPtr0),y
     jsr     drawTile_14x16
+
+    ldy     temp
+    iny
+    lda     (mapPtr0),y
+    beq     :+
+
+    lda     #HIGHLIGHT_COLOR
+    jsr     drawHighlight_14x16
+:
 
     inc     indexX
     lda     indexX
@@ -904,6 +1097,12 @@ cursor_loop:
     lda     cursorTile
     jsr     drawTile_14x16
 
+    lda     actionIndex
+    beq     :+
+    lda     #HIGHLIGHT_COLOR
+    jsr     drawHighlight_14x16
+:
+
     ; check for keypress
     lda     KBD 
     bmi     exit
@@ -972,6 +1171,10 @@ waitExit:
     asl     ; *2
     tay
     lda     (mapPtr0),y
+    sta     cursorTile
+    iny
+    lda     (mapPtr0),y
+    sta     actionIndex    
     rts
 
 .endproc
@@ -996,6 +1199,26 @@ temp:   .byte   0
 
 .endproc
 
+;-----------------------------------------------------------------------------
+; setAction
+;   Set action number to A
+;-----------------------------------------------------------------------------
+
+.proc setAction
+    sta     temp
+    jsr     setWorldMapPtr
+    lda     worldX
+    asl     ; *2
+    tay
+    iny
+    lda     temp
+    sta     (mapPtr0),y
+    sta     actionIndex
+    rts
+
+temp:   .byte   0
+
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; printerDump
@@ -1167,13 +1390,14 @@ dumpCount: .byte   0
 ;-----------------------------------------------------------------------------
 
 ; map = world offset
-mapX:               .byte   0
-mapY:               .byte   0
+mapX:               .byte   $1d
+mapY:               .byte   $1d
 
 ; cur = offset on screen
 curX:               .byte   3       ; start in middle of the screen
 curY:               .byte   3
 cursorTile:         .byte   0
+actionIndex:        .byte   0
 
 ; word = map + cur
 worldX:             .byte   0

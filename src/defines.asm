@@ -142,6 +142,11 @@ KEY_SPACE       = $A0
 KEY_0 			= $B0
 KEY_9 			= $B9
 KEY_A           = $C1
+KEY_B           = $C2
+KEY_C           = $C3
+KEY_D           = $C4
+KEY_E           = $C5
+KEY_F           = $C6
 KEY_Z           = $DA
 
 ; Constants
