@@ -270,18 +270,31 @@ done_right:
     cmp     #PLAYER_RIGHT
     beq     action_right
 
+    ldy     MAP_BUFFER+MAP_LEFT+1
+    lda     fgInfoTable,y
+
+    and     #TILE_ACTION
+    bne     do_action
+
     ldy     MAP_BUFFER+MAP_LEFT
     lda     bgInfoTable,y
 
-    and     #BACKGROUND_ACTION
+    and     #TILE_ACTION
     bne     do_action
+
     jmp     gameLoop
 
 action_right:
+    ldy     MAP_BUFFER+MAP_RIGHT+1
+    lda     fgInfoTable,y
+    and     #TILE_ACTION
+    bne     do_action
+
     ldy     MAP_BUFFER+MAP_RIGHT
     lda     bgInfoTable,y
-    and     #BACKGROUND_ACTION
+    and     #TILE_ACTION
     bne     do_action
+
     jmp     gameLoop
 
 do_action:
@@ -1240,15 +1253,15 @@ actionRefresh:      .byte   0
 ; Tile Dynamic Info
 
 COLLISION           = $10
-BACKGROUND_ACTION   = $0F       ; Up to 15 background actions
+TILE_ACTION         = $0F       ; Up to 15 background actions
 ANIMATE_WATER       = $80
 ANIMATE_BLINK       = $a0
 ANIMATE_ALTERNATE   = $c0
 
-BACKGROUND_SIGN     = $1
-BACKGROUND_HELLO    = $2
-BACKGROUND_OINK     = $3
-BACKGROUND_FLASH    = $4
+ACTION_SIGN         = $1
+ACTION_HELLO        = $2
+ACTION_OINK         = $3
+ACTION_FLASH        = $4
 
 .align 256
 
@@ -1267,7 +1280,7 @@ bgInfoTable:
     .byte   $00                                             ; 09 - Forest Path 1
     .byte   $00                                             ; 0a - Forest Path 2
     .byte   $00                                             ; 0b - Forest Path 3
-    .byte   COLLISION+BACKGROUND_SIGN                       ; 0c - Wooden Sign
+    .byte   COLLISION+ACTION_SIGN                           ; 0c - Wooden Sign
     .byte   $00                                             ; 0d - Gravel Path
     .byte   $00                                             ; 0e - Snow Cover
     .byte   COLLISION                                       ; 0f - Snow Tree
@@ -1288,17 +1301,17 @@ bgInfoTable:
     .byte   COLLISION                                       ; 1e - Chair - left
     .byte   COLLISION                                       ; 1f - Table
     .byte   $00                                             ; 20 - Tile
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_HELLO        ; 21 - Girl-1
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_HELLO        ; 22 - Girl-2
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_HELLO        ; 23 - Bee Boy-1
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_HELLO        ; 24 - Bee Boy-2
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_HELLO        ; 25 - Octo-1
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_HELLO        ; 26 - Octo-2
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_OINK         ; 27 - Pig-1
-    .byte   COLLISION+ANIMATE_BLINK+BACKGROUND_OINK         ; 28 - Pig-2
-    .byte   COLLISION+ANIMATE_ALTERNATE+BACKGROUND_FLASH    ; 29 - Doll-1
-    .byte   COLLISION+ANIMATE_ALTERNATE+BACKGROUND_FLASH    ; 2a - Doll-2
-    .byte   COLLISION+BACKGROUND_ACTION                     ; 2b - Snail
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 21 - Girl-1
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 22 - Girl-2
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 23 - Bee Boy-1
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 24 - Bee Boy-2
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 25 - Octo-1
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 26 - Octo-2
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_OINK             ; 27 - Pig-1
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_OINK             ; 28 - Pig-2
+    .byte   COLLISION+ANIMATE_ALTERNATE+ACTION_FLASH        ; 29 - Doll-1
+    .byte   COLLISION+ANIMATE_ALTERNATE+ACTION_FLASH        ; 2a - Doll-2
+    .byte   COLLISION+ACTION_HELLO                          ; 2b - Snail
     .byte   COLLISION+ANIMATE_WATER                         ; 1c - Lily Pad 1
     .byte   COLLISION+ANIMATE_WATER                         ; 1d - Lily Pad 2
     .byte   COLLISION+ANIMATE_WATER                         ; 1e - Lily Pad 3
@@ -1330,7 +1343,7 @@ fgInfoTable:
     .byte   $00                                             ; 05
     .byte   $00                                             ; 06
     .byte   $00                                             ; 07
-    .byte   COLLISION+ANIMATE_BLINK                         ; 08 - Bee Boy
+    .byte   COLLISION+ANIMATE_BLINK+ACTION_HELLO            ; 08 - Bee Boy
     .byte   $00                                             ; 09
     .byte   $00                                             ; 0a
     .byte   $00                                             ; 0b
