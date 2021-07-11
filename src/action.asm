@@ -6,55 +6,41 @@
 ; Data for game actions
 ;-----------------------------------------------------------------------------
 
+; Flags
+ACTION_NONE             = $00
+
+ACTION_FG_TILE          = $10
+ACTION_SELECT           = $20
+ACTION_PASSIVE          = $40
+ACTION_FLIP_BG          = $80
+
+FG_COIN                 = ACTION_FG_TILE + 0
+
+actionState:
+    .byte   ACTION_NONE                     ; 0 - NOP
+    .byte   ACTION_SELECT                   ; 1 - Sign - Instructions
+    .byte   ACTION_SELECT                   ; 2 - "Hello"
+    .byte   ACTION_SELECT                   ; 3 - "Oink"
+    .byte   ACTION_SELECT                   ; 4 - "Zap"
+    .byte   ACTION_NONE                     ; 5 - NOP
+    .byte   ACTION_NONE                     ; 6 - NOP
+    .byte   ACTION_SELECT+ACTION_FLIP_BG    ; 7 - Door open
+    .byte   ACTION_SELECT                   ; 8 - Door closed
+    .byte   ACTION_PASSIVE+FG_COIN          ; 9 - Coin
+    .byte   ACTION_PASSIVE+FG_COIN          ; a - Coin
+    .byte   ACTION_PASSIVE+FG_COIN          ; b - Coin
+    .byte   ACTION_PASSIVE+FG_COIN          ; c - Coin
+
+
+
+
 
 ACTION_TYPE_NONE        = 0
 ACTION_TYPE_DIALOG      = 1
 ACTION_TYPE_SIGN        = 2
 ACTION_TYPE_FLASH       = 3
-
-; Flags
-ACTION_NONE             = $00
-ACTION_SELECT           = $20
-ACTION_PASSIVE          = $40
-ACTION_FLIP_BG          = $80
-
-actionState:
-    .byte   ACTION_NONE         ; 0 - NOP
-    .byte   ACTION_SELECT       ; 1 - Sign - Instructions
-    .byte   ACTION_SELECT       ; 2 - "Hello"
-    .byte   ACTION_SELECT       ; 3 - "Oink"
-    .byte   ACTION_SELECT       ; 4 - "Zap"
-    .byte   ACTION_NONE         ; 5 - NOP
-    .byte   ACTION_NONE         ; 6 - NOP
-    .byte   ACTION_FLIP_BG      ; 7 - Door open
-    .byte   ACTION_NONE         ; 8 - Door closed
-
-.align 256
-actionJumpTable:
-
-.align 4    ; 0
-    rts
-    nop
-
-.align 4    ; 1
-    rts
-    nop
-
-.align 4    ; 2
-    rts
-    nop
-
-.align 4    ; 3
-    rts
-    nop
-
-.align 4    ; 4
-    rts
-    nop
-
-.align 4    ; 5
-    rts
-    nop
+ACTION_TYPE_DOOR        = 4
+ACTION_TYPE_PICKUP      = 5
 
 ; Action Format
 ;
@@ -100,9 +86,17 @@ actionJumpTable:
 ;
 ; Mode = refresh
 
-; Alert - display message and play sound
+; Door - toggle bg_state
 ;------------------------------------------
 ; 0:     03
+; 1:     Next
+; 2:     Padding
+;
+; Mode = refresh
+
+; Alert - display message and play sound
+;------------------------------------------
+; 0:     04
 ; 1:     Next
 ; 2:     StringPtr   - Message to display, can be length 0
 ; 4:     SoundPtr    - Sound to play, can be length 0
@@ -180,6 +174,37 @@ actionTable:
     .word   dialogStringHaHa
     .byte   14,3                    ; width, height
     .byte   0,0                     ; Padding
+
+; 7
+    .byte   ACTION_TYPE_DOOR
+    .byte   0
+    .byte   0,0,0,0,0,0
+
+; 8
+    .byte   ACTION_TYPE_DOOR
+    .byte   0
+    .byte   0,0,0,0,0,0
+
+; 9
+    .byte   ACTION_TYPE_PICKUP
+    .byte   0
+    .byte   0,0,0,0,0,0
+
+; a
+    .byte   ACTION_TYPE_PICKUP
+    .byte   0
+    .byte   0,0,0,0,0,0
+
+; b
+    .byte   ACTION_TYPE_PICKUP
+    .byte   0
+    .byte   0,0,0,0,0,0
+
+; c
+    .byte   ACTION_TYPE_PICKUP
+    .byte   0
+    .byte   0,0,0,0,0,0
+
 
 ; width =  (1+maxcol)*2 (range = 14 - 26)
 ; height = 2 + rows

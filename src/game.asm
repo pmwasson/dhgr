@@ -160,7 +160,7 @@ gameLoop:
     ;-------------------
 
     lda     actionType
-    beq     playerInput
+    beq     checkPassive
 
     lda     actionRefresh
     sta     refresh         ; set if need to clear screen next time
@@ -189,6 +189,22 @@ gameLoop:
     jsr     readAction
 
     jmp     gameLoop
+
+
+    ;-------------------
+    ; Check passive
+    ;-------------------
+checkPassive:
+    ldx     #MAP_CENTER
+    ldy     MAP_BUFFER+1,x
+    lda     actionState,y
+    and     #ACTION_PASSIVE
+    beq     playerInput
+
+    sty     actionIndex
+    jsr     readAction
+    jmp     gameLoop
+
 
 playerInput:
     ;-------------------
@@ -949,17 +965,19 @@ loopx:
 
     inc     mapIndex
 
-    ; FIXME -- just starting player for now
-    lda     mapIndex
-    cmp     #MAP_CENTER+1
-    bne     continue
+    ldy     mapIndex
+    ldx     MAP_BUFFER,y
 
-    lda     playerTile
+    lda     actionState,x
+    and     #ACTION_FG_TILE
+    beq     draw_player
 
+    lda     actionState,x
+    and     #$1f
+    sta     fgTile
 
-;    ldy     mapIndex
-;    lda     MAP_BUFFER,y
-;    beq     continue
+    jsr     DHGR_DRAW_FG_14X16
+
 ;
 ;    ; Apply animation
 ;    tax                         ; x = tile
@@ -976,6 +994,17 @@ loopx:
 ;    adc     animateOffset,y     ; add offset
 ;:
 
+
+    ;---------------------
+    ; Draw player
+    ;---------------------
+draw_player:
+
+    lda     mapIndex
+    cmp     #MAP_CENTER+1
+    bne     continue
+
+    lda     playerTile
     sta     fgTile
     jsr     DHGR_DRAW_FG_14X16
 
@@ -997,9 +1026,11 @@ continue:
     inc     tileY
     lda     tileY
     cmp     #MAP_Y_OFFSET + MAP_SCREEN_HEIGHT*2
-    bne     loopy
-
+    bne     :+
     rts
+: 
+    jmp     loopy
+
 
 mapIndex:       .byte   0
 animateY:       .byte   0
@@ -1067,6 +1098,30 @@ actionPtr       = A2              ; Use A2 for temp pointer
     lda     #0
     sta     clearColor
     inc     actionRefresh
+
+    rts
+
+:
+
+    cmp     #ACTION_TYPE_DOOR
+    bne     :+
+
+    ldx     actionIndex
+    lda     actionState,x
+    eor     #ACTION_FLIP_BG
+    sta     actionState,x
+
+    rts
+
+:
+    cmp     #ACTION_TYPE_PICKUP
+    bne     :+
+
+    ldx     actionIndex
+    lda     actionState,x
+    and     #255-(ACTION_FG_TILE+ACTION_PASSIVE)
+    sta     actionState,x
+
 
     rts
 
