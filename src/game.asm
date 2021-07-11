@@ -270,22 +270,12 @@ done_right:
     cmp     #PLAYER_RIGHT
     beq     action_right
 
-    lda     MAP_BUFFER+MAP_LEFT+1
-    bne     do_action
-
-    jmp     gameLoop
+    ldy     MAP_BUFFER+MAP_LEFT+1
+    jmp     select_action
 
 action_right:
-    lda     MAP_BUFFER+MAP_RIGHT+1
-    bne     do_action
-
-    jmp     gameLoop
-
-do_action:
-    sta     actionIndex
-    jsr     readAction
-
-    jmp     gameLoop
+    ldy     MAP_BUFFER+MAP_RIGHT+1
+    jmp     select_action
 
 
 :
@@ -311,7 +301,25 @@ do_action:
     jmp     MONZ        ; enter monitor
 :
 
+    ;
+    ; Default
+    ;
     jmp     gameLoop
+
+    ;---------------------------------
+
+    ; Pass action index in Y
+select_action:
+    lda     actionState,y
+    and     #ACTION_SELECT
+    bne     do_action
+    jmp     gameLoop
+
+do_action:
+    sty     actionIndex
+    jsr     readAction
+    jmp     gameLoop
+
 
 .endproc
 
@@ -891,6 +899,16 @@ loopy:
 
 loopx:
 
+    ; Check for modifications
+    ldx     mapIndex
+    ldy     MAP_BUFFER+1,x
+    lda     actionState,y
+    and     #ACTION_FLIP_BG
+    beq     :+
+
+    ; Add 1 to BG tile
+    inc     MAP_BUFFER,x
+:
 
     ;---------------------
     ; Draw background tile

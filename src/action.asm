@@ -12,6 +12,49 @@ ACTION_TYPE_DIALOG      = 1
 ACTION_TYPE_SIGN        = 2
 ACTION_TYPE_FLASH       = 3
 
+; Flags
+ACTION_NONE             = $00
+ACTION_SELECT           = $20
+ACTION_PASSIVE          = $40
+ACTION_FLIP_BG          = $80
+
+actionState:
+    .byte   ACTION_NONE         ; 0 - NOP
+    .byte   ACTION_SELECT       ; 1 - Sign - Instructions
+    .byte   ACTION_SELECT       ; 2 - "Hello"
+    .byte   ACTION_SELECT       ; 3 - "Oink"
+    .byte   ACTION_SELECT       ; 4 - "Zap"
+    .byte   ACTION_NONE         ; 5 - NOP
+    .byte   ACTION_NONE         ; 6 - NOP
+    .byte   ACTION_FLIP_BG      ; 7 - Door open
+    .byte   ACTION_NONE         ; 8 - Door closed
+
+.align 256
+actionJumpTable:
+
+.align 4    ; 0
+    rts
+    nop
+
+.align 4    ; 1
+    rts
+    nop
+
+.align 4    ; 2
+    rts
+    nop
+
+.align 4    ; 3
+    rts
+    nop
+
+.align 4    ; 4
+    rts
+    nop
+
+.align 4    ; 5
+    rts
+    nop
 
 ; Action Format
 ;
