@@ -49,6 +49,8 @@ MAP_RIGHT           =   MAP_CENTER+2
 ; Tile for player direction
 PLAYER_RIGHT        =   4
 PLAYER_LEFT         =   5
+PLAYER_DOWN         =   6
+PLAYER_UP           =   7
 
 DIALOG_BOTTOM       =   MAP_Y_OFFSET + 3*2
 DIALOG_LEFT         =   2
@@ -223,6 +225,8 @@ playerInput:
 
     cmp     #KEY_UP
     bne     :+
+    lda     #PLAYER_UP
+    sta     playerTile
     lda     mapWindowY
     beq     done_up
     ldy     #MAP_UP
@@ -235,6 +239,8 @@ done_up:
  
     cmp     #KEY_DOWN
     bne     :+
+    lda     #PLAYER_DOWN
+    sta     playerTile
     lda     mapWindowY
     cmp     #MAP_HEIGHT-MAP_SCREEN_HEIGHT
     beq     done_down
@@ -275,6 +281,7 @@ done_right:
     jmp     gameLoop
 :
 
+
     ;
     ; Action
     ;
@@ -282,18 +289,10 @@ done_right:
     cmp     #KEY_SPACE
     bne     :+
 
-    lda     playerTile
-    cmp     #PLAYER_RIGHT
-    beq     action_right
-
-    ldy     MAP_BUFFER+MAP_LEFT+1
+    ldy     playerTile
+    ldx     directionMapOffset-PLAYER_RIGHT,y
+    ldy     MAP_BUFFER,x
     jmp     select_action
-
-action_right:
-    ldy     MAP_BUFFER+MAP_RIGHT+1
-    jmp     select_action
-
-
 :
     ;
     ; Exit
@@ -336,6 +335,12 @@ do_action:
     jsr     readAction
     jmp     gameLoop
 
+
+directionMapOffset:
+    .byte   MAP_RIGHT+1
+    .byte   MAP_LEFT+1
+    .byte   MAP_DOWN+1
+    .byte   MAP_UP+1
 
 .endproc
 
@@ -1148,7 +1153,8 @@ actionPtr       = A2              ; Use A2 for temp pointer
 
     ; Top = bottom - height
 
-    lda     #DIALOG_BOTTOM
+    ldx     playerTile
+    lda     dialogBottom-PLAYER_RIGHT,x
     ldy     #5              ; height
     sec
     sbc     (actionPtr),y
@@ -1159,6 +1165,8 @@ actionPtr       = A2              ; Use A2 for temp pointer
     lda     playerTile
     cmp     #PLAYER_RIGHT
     bne     dialog_left
+
+    ; Right justified
 
     lda     #0
     sta     dialogDir
@@ -1178,8 +1186,10 @@ actionPtr       = A2              ; Use A2 for temp pointer
 
 dialog_left:
 
-    lda     #1
-    sta     dialogDir
+    cmp     #PLAYER_LEFT
+    bne     dialog_updown
+
+    ; Left justified
 
     lda     #DIALOG_LEFT
     sta     dialogLeft
@@ -1189,7 +1199,30 @@ dialog_left:
     adc     (actionPtr),y
     sta     dialogRight
 
+    lda     #1
+    sta     dialogDir
+
     lda     #DIALOG_X_LEFT
+    sta     dialogX
+
+    jmp     finish
+
+dialog_updown:
+
+    ; Left justified (but shifted right)
+
+    lda     #DIALOG_LEFT+4
+    sta     dialogLeft
+
+    ldy     #4              ; width
+    clc
+    adc     (actionPtr),y
+    sta     dialogRight
+
+    lda     #1
+    sta     dialogDir
+
+    lda     #DIALOG_X_LEFT+4
     sta     dialogX
 
 finish:
@@ -1201,7 +1234,17 @@ finish:
 
     rts
 
+halfWidth:  .byte   0
+
 .endproc
+
+
+; Make global to share with sign
+dialogBottom:
+    .byte   DIALOG_BOTTOM
+    .byte   DIALOG_BOTTOM
+    .byte   DIALOG_BOTTOM+2
+    .byte   DIALOG_BOTTOM-2
 
 ;-----------------------------------------------------------------------------
 ; Read action: Sign
@@ -1218,8 +1261,8 @@ finish:
     sta     stringPtr1
 
     ; Top = bottom - height
-
-    lda     #DIALOG_BOTTOM
+    ldx     playerTile
+    lda     dialogBottom-PLAYER_RIGHT,x
     ldy     #5              ; height
     sec
     sbc     (actionPtr),y
