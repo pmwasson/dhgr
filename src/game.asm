@@ -187,7 +187,7 @@ gameLoop:
 
     lda     actionNext
     beq     gameLoop
-    sta     actionIndex
+    sta     actionCommand
     jsr     readAction
 
     jmp     gameLoop
@@ -204,6 +204,8 @@ checkPassive:
     beq     playerInput
 
     sty     actionIndex
+    lda     actionCommandTable,y
+    sta     actionCommand
     jsr     readAction
     jmp     gameLoop
 
@@ -332,6 +334,8 @@ select_action:
 
 do_action:
     sty     actionIndex
+    lda     actionCommandTable,y
+    sta     actionCommand
     jsr     readAction
     jmp     gameLoop
 
@@ -1056,7 +1060,7 @@ actionPtr       = A2              ; Use A2 for temp pointer
 .proc readAction
 
     ; Set up pointer
-    lda     actionIndex
+    lda     actionCommand
     asl                     ; *8
     asl                     
     asl                     
@@ -1352,8 +1356,9 @@ dialogX:            .byte   0
 dialogDir:          .byte   0
 
 ; Action
-actionIndex:        .byte   0
-actionType:         .byte   0
+actionIndex:        .byte   0       ; Part of map - index into state
+actionCommand:      .byte   0       ; Current command index
+actionType:         .byte   0       ; Current action type
 actionNext:         .byte   0
 actionWait:         .byte   0
 actionRefresh:      .byte   0

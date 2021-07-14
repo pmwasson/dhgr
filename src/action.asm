@@ -31,9 +31,20 @@ actionState:
     .byte   ACTION_PASSIVE+FG_COIN          ; b - Coin
     .byte   ACTION_PASSIVE+FG_COIN          ; c - Coin
 
-
-
-
+actionCommandTable:
+    .byte   $00                             ; 0 - NOP
+    .byte   $01                             ; 1 - Sign - Instructions
+    .byte   $02                             ; 2 - "Hello"
+    .byte   $03                             ; 3 - "Oink"
+    .byte   $04                             ; 4 - "Zap"
+    .byte   $00                             ; 5 - NOP
+    .byte   $00                             ; 6 - NOP
+    .byte   $07                             ; 7 - Door open
+    .byte   $07                             ; 8 - Door closed
+    .byte   $08                             ; 9 - Coin
+    .byte   $08                             ; a - Coin
+    .byte   $08                             ; b - Coin
+    .byte   $08                             ; c - Coin    
 
 ACTION_TYPE_NONE        = 0
 ACTION_TYPE_DIALOG      = 1
@@ -181,29 +192,11 @@ actionTable:
     .byte   0,0,0,0,0,0
 
 ; 8
-    .byte   ACTION_TYPE_DOOR
-    .byte   0
-    .byte   0,0,0,0,0,0
-
-; 9
     .byte   ACTION_TYPE_PICKUP
     .byte   0
     .byte   0,0,0,0,0,0
 
-; a
-    .byte   ACTION_TYPE_PICKUP
-    .byte   0
-    .byte   0,0,0,0,0,0
 
-; b
-    .byte   ACTION_TYPE_PICKUP
-    .byte   0
-    .byte   0,0,0,0,0,0
-
-; c
-    .byte   ACTION_TYPE_PICKUP
-    .byte   0
-    .byte   0,0,0,0,0,0
 
 
 ; width =  (1+maxcol)*2 (range = 14 - 26)
