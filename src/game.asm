@@ -981,27 +981,26 @@ loopx:
     and     #ACTION_FG_TILE
     beq     draw_player
 
-    lda     actionState,x
-    and     #$1f
+    ora     #$10
+
+    ; Apply animation
+    tax                         ; x = tile
+    ldy     fgInfoTable,x       ; y = animation base
+    bpl     :+
+
+    tya
+    clc
+    and     #$E0
+    adc     animateIndex
+    tay
+    txa
+    clc
+    adc     animateOffset,y     ; add offset
+:
+
     sta     fgTile
 
     jsr     DHGR_DRAW_FG_14X16
-
-;
-;    ; Apply animation
-;    tax                         ; x = tile
-;    ldy     fgInfoTable,x       ; y = animation base
-;    bpl     :+
-;
-;    tya
-;    clc
-;    and     #$E0
-;    adc     animateIndex
-;    tay
-;    txa
-;    clc
-;    adc     animateOffset,y     ; add offset
-;:
 
 
     ;---------------------
@@ -1029,7 +1028,9 @@ continue:
     adc     #4
     sta     tileX
     cmp     #MAP_X_OFFSET + MAP_SCREEN_WIDTH*4
-    bne     loopx
+    beq     :+
+    jmp     loopx
+:
 
     inc     tileY
     inc     tileY
@@ -1371,6 +1372,7 @@ COLLISION           = $01
 ANIMATE_WATER       = $80
 ANIMATE_BLINK       = $a0
 ANIMATE_ALTERNATE   = $c0
+ANIMATE_GLITTER     = $e0
 
 .align 256
 
@@ -1442,8 +1444,72 @@ bgInfoTable:
     .byte   $00                                             ; 3e
     .byte   $00                                             ; 3f
 
-    .res    $40
-
+fgInfoTable:
+; Just animation
+    .byte   $00                                             ; 00
+    .byte   $00                                             ; 01
+    .byte   $00                                             ; 02
+    .byte   $00                                             ; 03
+    .byte   $00                                             ; 04
+    .byte   $00                                             ; 05
+    .byte   $00                                             ; 06
+    .byte   $00                                             ; 07
+    .byte   $00                                             ; 08
+    .byte   $00                                             ; 09
+    .byte   $00                                             ; 0a
+    .byte   $00                                             ; 0b
+    .byte   $00                                             ; 0c
+    .byte   $00                                             ; 0d
+    .byte   $00                                             ; 0e
+    .byte   $00                                             ; 0f
+    .byte   ANIMATE_GLITTER                                 ; 10 - Coin
+    .byte   $00                                             ; 11
+    .byte   $00                                             ; 12
+    .byte   $00                                             ; 13
+    .byte   $00                                             ; 14
+    .byte   $00                                             ; 15
+    .byte   $00                                             ; 16
+    .byte   $00                                             ; 17
+    .byte   $00                                             ; 18
+    .byte   $00                                             ; 19
+    .byte   $00                                             ; 1a
+    .byte   $00                                             ; 1b
+    .byte   $00                                             ; 1c
+    .byte   $00                                             ; 1d
+    .byte   $00                                             ; 1e
+    .byte   $00                                             ; 1f
+    .byte   $00                                             ; 20
+    .byte   $00                                             ; 21
+    .byte   $00                                             ; 22
+    .byte   $00                                             ; 23
+    .byte   $00                                             ; 24
+    .byte   $00                                             ; 25
+    .byte   $00                                             ; 26
+    .byte   $00                                             ; 27
+    .byte   $00                                             ; 28
+    .byte   $00                                             ; 29
+    .byte   $00                                             ; 2a
+    .byte   $00                                             ; 2b
+    .byte   $00                                             ; 1c
+    .byte   $00                                             ; 1d
+    .byte   $00                                             ; 1e
+    .byte   $00                                             ; 2f
+    .byte   $00                                             ; 30
+    .byte   $00                                             ; 31
+    .byte   $00                                             ; 32
+    .byte   $00                                             ; 33
+    .byte   $00                                             ; 34
+    .byte   $00                                             ; 35 
+    .byte   $00                                             ; 36
+    .byte   $00                                             ; 37
+    .byte   $00                                             ; 38
+    .byte   $00                                             ; 39
+    .byte   $00                                             ; 3a
+    .byte   $00                                             ; 3b
+    .byte   $00                                             ; 3c
+    .byte   $00                                             ; 3d
+    .byte   $00                                             ; 3e
+    .byte   $00                                             ; 3f
 
     ; 80 - water
     .byte   0
@@ -1546,6 +1612,40 @@ bgInfoTable:
     .byte   1
     .byte   0
     .byte   1
+
+    ; e0 - glitter
+    .byte   1
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   1
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
+    .byte   0
 
 
 ;-----------------------------------------------------------------------------

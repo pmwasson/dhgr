@@ -30,6 +30,15 @@ actionState:
     .byte   ACTION_PASSIVE+FG_COIN          ; a - Coin
     .byte   ACTION_PASSIVE+FG_COIN          ; b - Coin
     .byte   ACTION_PASSIVE+FG_COIN          ; c - Coin
+    .byte   ACTION_NONE                     ; d
+    .byte   ACTION_NONE                     ; e
+    .byte   ACTION_NONE                     ; f
+    .byte   ACTION_SELECT                   ; 10
+    .byte   ACTION_SELECT                   ; 11
+    .byte   ACTION_SELECT                   ; 12
+    .byte   ACTION_SELECT                   ; 13
+    .byte   ACTION_SELECT                   ; 14
+    .byte   ACTION_SELECT                   ; 15
 
 actionCommandTable:
     .byte   $00                             ; 0 - NOP
@@ -39,12 +48,22 @@ actionCommandTable:
     .byte   $04                             ; 4 - "Zap"
     .byte   $00                             ; 5 - NOP
     .byte   $00                             ; 6 - NOP
-    .byte   $07                             ; 7 - Door open
-    .byte   $07                             ; 8 - Door closed
+    .byte   $07                             ; 7 - Door
+    .byte   $07                             ; 8 - Door
     .byte   $08                             ; 9 - Coin
     .byte   $08                             ; a - Coin
     .byte   $08                             ; b - Coin
     .byte   $08                             ; c - Coin    
+    .byte   $00                             ; d
+    .byte   $00                             ; e
+    .byte   $00                             ; f
+    .byte   $07                             ; 10
+    .byte   $07                             ; 11
+    .byte   $07                             ; 12
+    .byte   $07                             ; 13
+    .byte   $07                             ; 14
+    .byte   $07                             ; 15
+
 
 ACTION_TYPE_NONE        = 0
 ACTION_TYPE_DIALOG      = 1
@@ -101,7 +120,8 @@ ACTION_TYPE_PICKUP      = 5
 ;------------------------------------------
 ; 0:     03
 ; 1:     Next
-; 2:     Padding
+; 2:     State to toggle (0=mine)
+; 3:     Padding
 ;
 ; Mode = refresh
 
@@ -189,7 +209,8 @@ actionTable:
 ; 7
     .byte   ACTION_TYPE_DOOR
     .byte   0
-    .byte   0,0,0,0,0,0
+    .byte   0
+    .byte   0,0,0,0,0
 
 ; 8
     .byte   ACTION_TYPE_PICKUP
