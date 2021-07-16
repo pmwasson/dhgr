@@ -94,8 +94,9 @@ SIGN_BOTTOM         =   MAP_Y_OFFSET + 3*2
 
 
     ; set initial coordinates
-    lda     #(64-7)/2
+    lda     #$04
     sta     mapWindowX
+    lda     #$22
     sta     mapWindowY
     jsr     DHGR_READ_MAP
 
@@ -188,6 +189,7 @@ gameLoop:
     lda     actionNext
     beq     gameLoop
     sta     actionCommand
+
     jsr     readAction
 
     jmp     gameLoop
@@ -897,13 +899,8 @@ temp:       .byte   0
 
 .proc drawMap
 
-    ; FIXME: optmize by only reading map if moved
     ; Read map buffer
     jsr     DHGR_READ_MAP
-
- ;   ; Draw player
- ;   lda     playerTile
- ;   sta     MAP_BUFFER+MAP_CENTER+1
 
     lda     #0
     sta     mapIndex
@@ -1113,17 +1110,43 @@ actionPtr       = A2              ; Use A2 for temp pointer
 
 :
 
-    cmp     #ACTION_TYPE_DOOR
+    cmp     #ACTION_TYPE_BG_STATE
+    bne     pickup
+
+    ldy     #3                  ; state
+    lda     (actionPtr),y
+    tax
+    bne     :+
+    ldx     actionIndex         ; 0 = me!
+:
+
+    ldy     #2                  ; mode
+    lda     (actionPtr),y
+
     bne     :+
 
-    ldx     actionIndex
+    ; 0 = ACTION_MODE_CLEAR
     lda     actionState,x
-    eor     #ACTION_FLIP_BG
+    and     #255-ACTION_FLIP_BG
+    sta     actionState,x
+    rts
+:
+    cmp     #ACTION_MODE_SET
+    bne     :+
+
+    lda     actionState,x
+    ora     ACTION_FLIP_BG
     sta     actionState,x
 
     rts
-
 :
+    ; 2 = ACTION_MODE_TOGGLE
+    lda     actionState,x
+    eor     #ACTION_FLIP_BG
+    sta     actionState,x
+    rts
+
+pickup:
     cmp     #ACTION_TYPE_PICKUP
     bne     :+
 
@@ -1398,8 +1421,8 @@ bgInfoTable:
     .byte   COLLISION                                       ; 10 - Snow Rock
     .byte   COLLISION                                       ; 11 - Mountains
     .byte   COLLISION+ANIMATE_WATER                         ; 12 - Shore 1
-    .byte   COLLISION+ANIMATE_WATER                         ; 13 - Shore 2
-    .byte   COLLISION+ANIMATE_WATER                         ; 14 - Shore 3
+    .byte   COLLISION                                       ; 13 - Shore 2
+    .byte   COLLISION                                       ; 14 - Shore 3
     .byte   ANIMATE_WATER                                   ; 15 - Pond Rock 1
     .byte   ANIMATE_WATER                                   ; 16 - Pond Rock 2
     .byte   ANIMATE_WATER                                   ; 17 - Pond Rock 3
@@ -1408,31 +1431,31 @@ bgInfoTable:
     .byte   COLLISION                                       ; 1a - Door Closed
     .byte   $00                                             ; 1b - Door Open
     .byte   $00                                             ; 1c - Store floor
-    .byte   COLLISION                                       ; 1d - Chair - right
-    .byte   COLLISION                                       ; 1e - Chair - left
+    .byte   $00                                             ; 1d - Chair - right
+    .byte   $00                                             ; 1e - Chair - left
     .byte   COLLISION                                       ; 1f - Table
     .byte   $00                                             ; 20 - Tile
     .byte   COLLISION+ANIMATE_BLINK                         ; 21 - Girl-1
-    .byte   COLLISION+ANIMATE_BLINK                         ; 22 - Girl-2
+    .byte   COLLISION                                       ; 22 - Girl-2
     .byte   COLLISION+ANIMATE_BLINK                         ; 23 - Bee Boy-1
-    .byte   COLLISION+ANIMATE_BLINK                         ; 24 - Bee Boy-2
+    .byte   COLLISION                                       ; 24 - Bee Boy-2
     .byte   COLLISION+ANIMATE_BLINK                         ; 25 - Octo-1
-    .byte   COLLISION+ANIMATE_BLINK                         ; 26 - Octo-2
+    .byte   COLLISION                                       ; 26 - Octo-2
     .byte   COLLISION+ANIMATE_BLINK                         ; 27 - Pig-1
-    .byte   COLLISION+ANIMATE_BLINK                         ; 28 - Pig-2
+    .byte   COLLISION                                       ; 28 - Pig-2
     .byte   COLLISION+ANIMATE_ALTERNATE                     ; 29 - Doll-1
-    .byte   COLLISION+ANIMATE_ALTERNATE                     ; 2a - Doll-2
+    .byte   COLLISION                                       ; 2a - Doll-2
     .byte   COLLISION                                       ; 2b - Snail
     .byte   COLLISION+ANIMATE_WATER                         ; 1c - Lily Pad 1
-    .byte   COLLISION+ANIMATE_WATER                         ; 1d - Lily Pad 2
-    .byte   COLLISION+ANIMATE_WATER                         ; 1e - Lily Pad 3
+    .byte   COLLISION                                       ; 1d - Lily Pad 2
+    .byte   COLLISION                                       ; 1e - Lily Pad 3
     .byte   $00                                             ; 2f - Small mushroooms
     .byte   COLLISION                                       ; 30 - Large mushroom
-    .byte   $00                                             ; 31
-    .byte   $00                                             ; 32
-    .byte   $00                                             ; 33
-    .byte   $00                                             ; 34
-    .byte   $00                                             ; 35 
+    .byte   COLLISION                                       ; 31 - Ice
+    .byte   $00                                             ; 32 - Ice (melted)
+    .byte   $00                                             ; 33 - Fire (out)
+    .byte   COLLISION+ANIMATE_ALTERNATE                     ; 34 - Fire lit 1
+    .byte   COLLISION                                       ; 35 - Fire lit 2
     .byte   $00                                             ; 36
     .byte   $00                                             ; 37
     .byte   $00                                             ; 38

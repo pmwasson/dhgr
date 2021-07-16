@@ -22,23 +22,23 @@ actionState:
     .byte   ACTION_SELECT                   ; 2 - "Hello"
     .byte   ACTION_SELECT                   ; 3 - "Oink"
     .byte   ACTION_SELECT                   ; 4 - "Zap"
-    .byte   ACTION_NONE                     ; 5 - NOP
-    .byte   ACTION_NONE                     ; 6 - NOP
+    .byte   ACTION_SELECT+ACTION_FLIP_BG    ; 5 - Fire
+    .byte   ACTION_SELECT                   ; 6 - Fire
     .byte   ACTION_SELECT+ACTION_FLIP_BG    ; 7 - Door open
     .byte   ACTION_SELECT                   ; 8 - Door closed
     .byte   ACTION_PASSIVE+FG_COIN          ; 9 - Coin
     .byte   ACTION_PASSIVE+FG_COIN          ; a - Coin
     .byte   ACTION_PASSIVE+FG_COIN          ; b - Coin
     .byte   ACTION_PASSIVE+FG_COIN          ; c - Coin
-    .byte   ACTION_NONE                     ; d
+    .byte   ACTION_NONE                     ; d - Ice
     .byte   ACTION_NONE                     ; e
     .byte   ACTION_NONE                     ; f
-    .byte   ACTION_SELECT                   ; 10
-    .byte   ACTION_SELECT                   ; 11
-    .byte   ACTION_SELECT                   ; 12
-    .byte   ACTION_SELECT                   ; 13
-    .byte   ACTION_SELECT                   ; 14
-    .byte   ACTION_SELECT                   ; 15
+    .byte   ACTION_SELECT                   ; 10 - Door
+    .byte   ACTION_SELECT                   ; 11 - Door
+    .byte   ACTION_SELECT                   ; 12 - Door
+    .byte   ACTION_SELECT                   ; 13 - Door
+    .byte   ACTION_SELECT                   ; 14 - Door
+    .byte   ACTION_SELECT                   ; 15 - Door
 
 actionCommandTable:
     .byte   $00                             ; 0 - NOP
@@ -46,31 +46,37 @@ actionCommandTable:
     .byte   $02                             ; 2 - "Hello"
     .byte   $03                             ; 3 - "Oink"
     .byte   $04                             ; 4 - "Zap"
-    .byte   $00                             ; 5 - NOP
-    .byte   $00                             ; 6 - NOP
+    .byte   $07                             ; 5 - Fire
+    .byte   $09                             ; 6 - Fire (linked to ice)
     .byte   $07                             ; 7 - Door
     .byte   $07                             ; 8 - Door
     .byte   $08                             ; 9 - Coin
     .byte   $08                             ; a - Coin
     .byte   $08                             ; b - Coin
     .byte   $08                             ; c - Coin    
-    .byte   $00                             ; d
+    .byte   $00                             ; d - Ice (passive)
     .byte   $00                             ; e
     .byte   $00                             ; f
-    .byte   $07                             ; 10
-    .byte   $07                             ; 11
-    .byte   $07                             ; 12
-    .byte   $07                             ; 13
-    .byte   $07                             ; 14
-    .byte   $07                             ; 15
+    .byte   $07                             ; 10 - Door
+    .byte   $07                             ; 11 - Door
+    .byte   $07                             ; 12 - Door
+    .byte   $07                             ; 13 - Door
+    .byte   $07                             ; 14 - Door
+    .byte   $07                             ; 15 - Door
 
 
 ACTION_TYPE_NONE        = 0
 ACTION_TYPE_DIALOG      = 1
 ACTION_TYPE_SIGN        = 2
 ACTION_TYPE_FLASH       = 3
-ACTION_TYPE_DOOR        = 4
+ACTION_TYPE_BG_STATE    = 4
 ACTION_TYPE_PICKUP      = 5
+
+ACTION_MODE_CLEAR       = 0 
+ACTION_MODE_SET         = 1 
+ACTION_MODE_TOGGLE      = 2 
+
+ACTION_STATE_ME         = 0
 
 ; Action Format
 ;
@@ -104,7 +110,7 @@ ACTION_TYPE_PICKUP      = 5
 ; 2:     StringPtr
 ; 4:     Width
 ; 5:     Height
-; 6:     Padding
+; 6-7:   Padding
 ;
 ; Mode = refresh + wait
 
@@ -112,44 +118,19 @@ ACTION_TYPE_PICKUP      = 5
 ;------------------------------------------
 ; 0:     02
 ; 1:     Next
-; 2:     Padding
+; 2-7:   Padding
 ;
 ; Mode = refresh
 
-; Door - toggle bg_state
+; bg_state
 ;------------------------------------------
 ; 0:     03
 ; 1:     Next
-; 2:     State to toggle (0=mine)
-; 3:     Padding
+; 2:     Mode: 0=clear, 1=set, 2=toggle
+; 3:     State to toggle (0=mine)
+; 4-7:   Padding
 ;
 ; Mode = refresh
-
-; Alert - display message and play sound
-;------------------------------------------
-; 0:     04
-; 1:     Next
-; 2:     StringPtr   - Message to display, can be length 0
-; 4:     SoundPtr    - Sound to play, can be length 0
-; 6:     Padding
-;
-; Mode = none
-
-; Logic - work with game state
-;------------------------------------------
-; 0:     04
-; 1:     Next
-; 2:     Command
-; 3:     Source1
-; 4:     Source2
-; 5:     Destination
-; 6:     Address
-; 7:     Padding
-;
-; cmd: 0 = nop:      do nothing
-;      1 = inc:      inc dest
-;      2 = copy:     copy source to dest
-;      3 = compare:  if source == dest jump to jump
 
 .align 256
 
@@ -206,16 +187,32 @@ actionTable:
     .byte   14,3                    ; width, height
     .byte   0,0                     ; Padding
 
-; 7
-    .byte   ACTION_TYPE_DOOR
-    .byte   0
-    .byte   0
-    .byte   0,0,0,0,0
+; 7 - simple toggle (unlocked door) 
+    .byte   ACTION_TYPE_BG_STATE
+    .byte   0                       ; Next
+    .byte   ACTION_MODE_TOGGLE      ; Mode
+    .byte   ACTION_STATE_ME         ; State
+    .byte   0,0,0,0
 
 ; 8
     .byte   ACTION_TYPE_PICKUP
     .byte   0
     .byte   0,0,0,0,0,0
+
+; 9  - Fire to melt ice
+    .byte   ACTION_TYPE_BG_STATE
+    .byte   $0A                     ; Next
+    .byte   ACTION_MODE_TOGGLE      ; Mode
+    .byte   ACTION_STATE_ME         ; State
+    .byte   0,0,0,0
+
+; A - continue (set ice)
+    .byte   ACTION_TYPE_BG_STATE
+    .byte   $00                     ; Next
+    .byte   ACTION_MODE_SET         ; Mode
+    .byte   $0D                     ; State
+    .byte   0,0,0,0
+
 
 
 

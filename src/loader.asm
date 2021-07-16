@@ -37,7 +37,7 @@
 ;
 ;   B000-B7FF   [ Font Tiles (128)              ]
 ;
-;   ProDos buffer only need if need to load/save
+;   ProDos buffer only needed if load/save supported
 
 READBUFFER      :=  $4000    ; Share read buffer with page2
 
