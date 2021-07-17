@@ -31,7 +31,7 @@ actionState:
     .byte   ACTION_PASSIVE+FG_COIN          ; b - Coin
     .byte   ACTION_PASSIVE+FG_COIN          ; c - Coin
     .byte   ACTION_NONE                     ; d - Ice
-    .byte   ACTION_NONE                     ; e
+    .byte   ACTION_SELECT                   ; e - Cold guy
     .byte   ACTION_NONE                     ; f
     .byte   ACTION_SELECT                   ; 10 - Door
     .byte   ACTION_SELECT                   ; 11 - Door
@@ -55,7 +55,7 @@ actionCommandTable:
     .byte   $08                             ; b - Coin
     .byte   $08                             ; c - Coin    
     .byte   $00                             ; d - Ice (passive)
-    .byte   $00                             ; e
+    .byte   $0b                             ; e - Thanks!
     .byte   $00                             ; f
     .byte   $07                             ; 10 - Door
     .byte   $07                             ; 11 - Door
@@ -213,8 +213,19 @@ actionTable:
     .byte   $0D                     ; State
     .byte   0,0,0,0
 
+; B
+    .byte   ACTION_TYPE_DIALOG
+    .byte   $0C                     ; Next dialog
+    .word   dialogStringThanks1
+    .byte   30,4                    ; width, height
+    .byte   0,0                     ; Padding
 
-
+; C
+    .byte   ACTION_TYPE_DIALOG
+    .byte   $00                     ; Next dialog
+    .word   dialogStringThanks2
+    .byte   30,5                    ; width, height
+    .byte   0,0                     ; Padding
 
 
 ; width =  (1+maxcol)*2 (range = 14 - 26)
@@ -259,4 +270,11 @@ actionTable:
  dialogStringHaHa:
     String     "HA HA!"   
 
+ dialogStringThanks1:
+    StringCont  "THANKS FOR"   
+    String      "SAVING ME!"   
 
+ dialogStringThanks2:
+    StringCont  "I DIDN'T THINK"   
+    StringCont  "I'D EVER GET"   
+    String      "OUT OF THERE!"   

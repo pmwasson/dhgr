@@ -96,7 +96,7 @@ SIGN_BOTTOM         =   MAP_Y_OFFSET + 3*2
     ; set initial coordinates
     lda     #$04
     sta     mapWindowX
-    lda     #$22
+    lda     #$25
     sta     mapWindowY
     jsr     DHGR_READ_MAP
 
@@ -1456,8 +1456,8 @@ bgInfoTable:
     .byte   $00                                             ; 33 - Fire (out)
     .byte   COLLISION+ANIMATE_ALTERNATE                     ; 34 - Fire lit 1
     .byte   COLLISION                                       ; 35 - Fire lit 2
-    .byte   $00                                             ; 36
-    .byte   $00                                             ; 37
+    .byte   COLLISION+ANIMATE_BLINK                         ; 36 - Cold guy 1
+    .byte   COLLISION                                       ; 37 - Cold guy 2
     .byte   $00                                             ; 38
     .byte   $00                                             ; 39
     .byte   $00                                             ; 3a
