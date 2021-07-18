@@ -163,7 +163,7 @@ gameLoop:
     ;-------------------
 
     lda     actionType
-    beq     checkPassive
+    beq     checkPassiveTile
 
     lda     actionRefresh
     sta     refresh         ; set if need to clear screen next time
@@ -198,12 +198,15 @@ gameLoop:
     ;-------------------
     ; Check passive
     ;-------------------
-checkPassive:
+checkPassiveTile:
     ldx     #MAP_CENTER
     ldy     MAP_BUFFER+1,x
     lda     actionState,y
-    and     #ACTION_PASSIVE
+    and     checkPassive
     beq     playerInput
+
+    lda     #0
+    sta     checkPassive        ; only once
 
     sty     actionIndex
     lda     actionCommandTable,y
@@ -237,6 +240,7 @@ playerInput:
     jsr     collisionCheck
     bcs     done_up
     dec     mapWindowY
+    jmp     moved
 done_up:
     jmp     gameLoop
 :
@@ -252,6 +256,7 @@ done_up:
     jsr     collisionCheck
     bcs     done_down
     inc     mapWindowY
+    jmp     moved
 done_down:
     jmp     gameLoop
 :
@@ -266,6 +271,7 @@ done_down:
     jsr     collisionCheck
     bcs     done_left
     dec     mapWindowX
+    jmp     moved
 done_left:
     jmp     gameLoop
 :
@@ -281,6 +287,7 @@ done_left:
     jsr     collisionCheck
     bcs     done_right
     inc     mapWindowX
+    jmp     moved
 done_right:
     jmp     gameLoop
 :
@@ -323,6 +330,12 @@ done_right:
     ;
     ; Default
     ;
+    jmp     gameLoop
+
+
+moved:
+    lda     #ACTION_PASSIVE
+    sta     checkPassive
     jmp     gameLoop
 
     ;---------------------------------
@@ -1381,6 +1394,7 @@ gameTime:           .byte   0
 animateTime:        .byte   0
 playerTile:         .byte   PLAYER_RIGHT
 clearColor:         .byte   0
+checkPassive:       .byte   ACTION_PASSIVE
 
 ; Box routine   
 boxLeft:            .byte   0
