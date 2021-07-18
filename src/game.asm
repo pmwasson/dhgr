@@ -1087,13 +1087,13 @@ actionPtr       = A2              ; Use A2 for temp pointer
     cmp     #ACTION_TYPE_DIALOG
     bne     :+
 
-    jmp     readActionDialog    ; link return
+    jmp     readActionDialog    ; Blocking - link return
 :
 
     cmp     #ACTION_TYPE_SIGN
     bne     :+
 
-    jmp     readActionSign      ; link return
+    jmp     readActionSign      ; Blocking - link return
 :
 
     cmp     #ACTION_TYPE_FLASH
@@ -1105,13 +1105,10 @@ actionPtr       = A2              ; Use A2 for temp pointer
     lda     #0
     sta     clearColor
     inc     actionRefresh
-
-    rts
-
+    rts                         ; Blocking
 :
-
-    cmp     #ACTION_TYPE_BG_STATE
-    bne     pickup
+    cmp     #ACTION_TYPE_SET_FLAG
+    bne     test_flag
 
     ldy     #3                  ; state
     lda     (actionPtr),y
@@ -1119,47 +1116,66 @@ actionPtr       = A2              ; Use A2 for temp pointer
     bne     :+
     ldx     actionIndex         ; 0 = me!
 :
-
     ldy     #2                  ; mode
     lda     (actionPtr),y
-
-    bne     :+
+    bne     flag_set
 
     ; 0 = ACTION_MODE_CLEAR
-    lda     actionState,x
-    and     #255-ACTION_FLIP_BG
+    ldy     #4                  ; flag
+    lda     (actionPtr),y
+    eor     #$FF
+    and     actionState,x
     sta     actionState,x
-    rts
-:
+    jmp     read_next
+
+flag_set:
     cmp     #ACTION_MODE_SET
-    bne     :+
-
-    lda     actionState,x
-    ora     ACTION_FLIP_BG
+    bne     flag_toggle
+    ldy     #4                  ; flag
+    lda     (actionPtr),y
+    ora     actionState,x
     sta     actionState,x
+    jmp     read_next
 
-    rts
-:
+flag_toggle:
     ; 2 = ACTION_MODE_TOGGLE
-    lda     actionState,x
-    eor     #ACTION_FLIP_BG
+    ldy     #4                  ; flag
+    lda     (actionPtr),y
+    eor     actionState,x
     sta     actionState,x
-    rts
+    jmp     read_next
 
-pickup:
-    cmp     #ACTION_TYPE_PICKUP
+test_flag:
+    cmp     #ACTION_TYPE_TEST_FLAG
+    bne     unknown
+
+    ldy     #3                  ; state
+    lda     (actionPtr),y
+    tax
     bne     :+
+    ldx     actionIndex         ; 0 = me!
 
-    ldx     actionIndex
-    lda     actionState,x
-    and     #255-(ACTION_FG_TILE+ACTION_PASSIVE)
-    sta     actionState,x
+    ldy     #4                  ; flag
+    lda     (actionPtr),y
+    and     actionState,x
+    beq     :+
 
+    ldy     #2                  ; goto
+    lda     (actionPtr),y   
+    sta     actionNext
+:
+    jmp     read_next
 
+unknown:
+    ; Default to nothing
     rts
 
+read_next:
+    lda     actionNext
+    beq     :+
+    sta     actionCommand
+    jmp     readAction
 :
-    ; Default to nothing
     rts
 
 .endproc

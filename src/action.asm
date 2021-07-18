@@ -69,14 +69,15 @@ ACTION_TYPE_NONE        = 0
 ACTION_TYPE_DIALOG      = 1
 ACTION_TYPE_SIGN        = 2
 ACTION_TYPE_FLASH       = 3
-ACTION_TYPE_BG_STATE    = 4
-ACTION_TYPE_PICKUP      = 5
+ACTION_TYPE_SET_FLAG    = 4
+ACTION_TYPE_TEST_FLAG   = 5
 
 ACTION_MODE_CLEAR       = 0 
 ACTION_MODE_SET         = 1 
 ACTION_MODE_TOGGLE      = 2 
 
 ACTION_STATE_ME         = 0
+
 
 ; Action Format
 ;
@@ -99,10 +100,11 @@ ACTION_STATE_ME         = 0
 ; 2:     StringPtr
 ; 4:     Width
 ; 5:     Height
-; 6:     Padding
+; 6-7:   Padding
 ;
 ; Mode = refresh + wait
 
+; FIXME: COMBINE ALL DIALOGS TYPES INTO 1 COMMAND
 ; Dialog - display a sign
 ;------------------------------------------
 ; 0:     01
@@ -114,21 +116,34 @@ ACTION_STATE_ME         = 0
 ;
 ; Mode = refresh + wait
 
-; Flash - flash screen
+; Effect - Screen effect
 ;------------------------------------------
 ; 0:     02
 ; 1:     Next
+; 2:     Mode   - 0 = flash white
 ; 2-7:   Padding
 ;
 ; Mode = refresh
 
-; bg_state
+; Set Flag - set flag value
 ;------------------------------------------
 ; 0:     03
 ; 1:     Next
 ; 2:     Mode: 0=clear, 1=set, 2=toggle
 ; 3:     State to toggle (0=mine)
-; 4-7:   Padding
+; 4:     Flag to change (0-7)
+; 5-7:   Padding
+;
+; Mode = refresh
+
+; Test Flag - jump if flag set
+;------------------------------------------
+; 0:     04
+; 1:     Next       -- if flag is not set
+; 2:     Goto       -- if Flag is true
+; 3:     State to check (0=mine)
+; 4:     Flag to check (0-7)
+; 5-7:   Padding
 ;
 ; Mode = refresh
 
@@ -188,42 +203,71 @@ actionTable:
     .byte   0,0                     ; Padding
 
 ; 7 - simple toggle (unlocked door) 
-    .byte   ACTION_TYPE_BG_STATE
+    .byte   ACTION_TYPE_SET_FLAG
     .byte   0                       ; Next
     .byte   ACTION_MODE_TOGGLE      ; Mode
     .byte   ACTION_STATE_ME         ; State
-    .byte   0,0,0,0
+    .byte   ACTION_FLIP_BG
+    .byte   0,0,0
 
-; 8
-    .byte   ACTION_TYPE_PICKUP
-    .byte   0
-    .byte   0,0,0,0,0,0
+; 8 - pickup
+    .byte   ACTION_TYPE_SET_FLAG
+    .byte   $00
+    .byte   ACTION_MODE_CLEAR       ; Mode
+    .byte   ACTION_STATE_ME         ; State
+    .byte   ACTION_FG_TILE+ACTION_PASSIVE   ; need to clear passive or get stuck
+    .byte   0,0,0
 
 ; 9  - Fire to melt ice
-    .byte   ACTION_TYPE_BG_STATE
+    .byte   ACTION_TYPE_SET_FLAG
     .byte   $0A                     ; Next
     .byte   ACTION_MODE_TOGGLE      ; Mode
     .byte   ACTION_STATE_ME         ; State
-    .byte   0,0,0,0
+    .byte   ACTION_FLIP_BG
+    .byte   0,0,0
 
 ; A - continue (set ice)
-    .byte   ACTION_TYPE_BG_STATE
+    .byte   ACTION_TYPE_SET_FLAG
     .byte   $00                     ; Next
     .byte   ACTION_MODE_SET         ; Mode
     .byte   $0D                     ; State
-    .byte   0,0,0,0
+    .byte   ACTION_FLIP_BG
+    .byte   0,0,0
 
 ; B
+    .byte   ACTION_TYPE_TEST_FLAG
+    .byte   $0C
+    .byte   $0F
+    .byte   ACTION_STATE_ME
+    .byte   $1                      ; Flag
+    .byte   0,0,0
+
+; C
     .byte   ACTION_TYPE_DIALOG
-    .byte   $0C                     ; Next dialog
+    .byte   $0D                     ; Next dialog
     .word   dialogStringThanks1
     .byte   30,4                    ; width, height
     .byte   0,0                     ; Padding
 
-; C
+; D
     .byte   ACTION_TYPE_DIALOG
-    .byte   $00                     ; Next dialog
+    .byte   $0E                     ; Next dialog
     .word   dialogStringThanks2
+    .byte   30,5                    ; width, height
+    .byte   0,0                     ; Padding
+
+; E - Set flag 1
+    .byte   ACTION_TYPE_SET_FLAG
+    .byte   $00
+    .byte   ACTION_MODE_SET         ; Mode
+    .byte   ACTION_STATE_ME         ; State
+    .byte   $1                      ; Flag
+    .byte   0,0,0
+
+; F
+    .byte   ACTION_TYPE_DIALOG
+    .byte   $0E                     ; Next dialog
+    .word   dialogStringRest
     .byte   30,5                    ; width, height
     .byte   0,0                     ; Padding
 
@@ -278,3 +322,8 @@ actionTable:
     StringCont  "I DIDN'T THINK"   
     StringCont  "I'D EVER GET"   
     String      "OUT OF THERE!"   
+
+dialogStringRest:
+    StringCont  "I'M GOING TO"   
+    StringCont  "REST HERE FOR"   
+    String      "A BIT."   
