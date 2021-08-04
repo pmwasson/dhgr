@@ -682,15 +682,7 @@ bottom_loop:
 :
     sta     tileX
 
-    lda     dialogDir
-    beq     :+
-
-    lda     #DIALOG_LS
-    sta     fgTile
-    jsr     DHGR_DRAW_FG_14X16
-    rts
-:
-    lda     #DIALOG_RS
+    lda     dialogStem
     sta     fgTile
     jsr     DHGR_DRAW_FG_14X16
     rts
@@ -1225,8 +1217,8 @@ read_next:
 
     ; Right justified
 
-    lda     #0
-    sta     dialogDir
+    lda     #DIALOG_RS
+    sta     dialogStem
 
     lda     #DIALOG_RIGHT
     sta     dialogRight
@@ -1256,8 +1248,8 @@ dialog_left:
     adc     (actionPtr),y
     sta     dialogRight
 
-    lda     #1
-    sta     dialogDir
+    lda     #DIALOG_LS
+    sta     dialogStem
 
     lda     #DIALOG_X_LEFT
     sta     dialogX
@@ -1276,8 +1268,8 @@ dialog_updown:
     adc     (actionPtr),y
     sta     dialogRight
 
-    lda     #1
-    sta     dialogDir
+    lda     #DIALOG_LS
+    sta     dialogStem
 
     lda     #DIALOG_X_LEFT+4
     sta     dialogX
@@ -1407,7 +1399,7 @@ dialogLeft:         .byte   0
 dialogRight:        .byte   0
 dialogTop:          .byte   0
 dialogX:            .byte   0
-dialogDir:          .byte   0
+dialogStem:         .byte   0
 
 ; Action
 actionIndex:        .byte   0       ; Part of map - index into state

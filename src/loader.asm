@@ -104,6 +104,17 @@ INSTALL_AUX_I4  = 4     ; Aux memory, interleave of 4
     jsr     init
 
     jsr    inline_print
+    StringCR "Checking memory..."
+
+    lda     $BF98
+    bmi     :+
+
+    jsr    inline_print
+    StringCR "128K memory not detected, exiting"
+    jmp     monitor
+:
+
+    jsr    inline_print
     StringCR "Loading game assets..."
 
 
