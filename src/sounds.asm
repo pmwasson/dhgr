@@ -28,13 +28,43 @@ loop2:
 .endproc
 
 ;-----------------------------------------------------------------------------
-; sound_shoot
+; sound_passive
 ;-----------------------------------------------------------------------------
-.proc sound_click
+.proc sound_passive
+    lda     #10         ; tone
+    ldx     #80         ; duration
+    jmp     sound_tone  ; link returns
+.endproc
+
+;-----------------------------------------------------------------------------
+; sound_action
+;-----------------------------------------------------------------------------
+.proc sound_action
+    lda     #20         ; tone
+    ldx     #20         ; duration
+    jsr     sound_tone
+    lda     #40        ; tone
+    ldx     #20         ; duration
+    jmp     sound_tone  ; link returns
+.endproc
+
+;-----------------------------------------------------------------------------
+; sound_fail
+;-----------------------------------------------------------------------------
+.proc sound_fail
     lda     #50         ; tone
-    ldx     #10         ; duration
+    ldx     #20         ; duration
     jsr     sound_tone
     lda     #190        ; tone
-    ldx     #3          ; duration
+    ldx     #20         ; duration
     jmp     sound_tone  ; link returns
+.endproc
+
+;-----------------------------------------------------------------------------
+; sound_walk
+;-----------------------------------------------------------------------------
+.proc sound_walk
+    lda     #80         ; tone
+    ldx     #04         ; duration
+    jmp     sound_tone
 .endproc

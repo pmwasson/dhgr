@@ -195,7 +195,7 @@ pan_left:
     dec     mapX
     jmp     finish_pan
 move_fail:
-    jsr     sound_click
+    jsr     sound_fail
     jmp     finish_move
 :
     ;------------------

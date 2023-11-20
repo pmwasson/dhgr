@@ -212,6 +212,9 @@ checkPassiveTile:
     lda     actionCommandTable,y
     sta     actionCommand
     jsr     readAction
+
+    jsr     sound_passive
+
     jmp     gameLoop
 
 
@@ -242,7 +245,7 @@ playerInput:
     dec     mapWindowY
     jmp     moved
 done_up:
-    jmp     gameLoop
+    jmp     moveFailed
 :
  
     cmp     #KEY_DOWN
@@ -258,7 +261,7 @@ done_up:
     inc     mapWindowY
     jmp     moved
 done_down:
-    jmp     gameLoop
+    jmp     moveFailed
 :
 
     cmp     #KEY_LEFT
@@ -273,7 +276,7 @@ done_down:
     dec     mapWindowX
     jmp     moved
 done_left:
-    jmp     gameLoop
+    jmp     moveFailed
 :
 
     cmp     #KEY_RIGHT
@@ -289,9 +292,8 @@ done_left:
     inc     mapWindowX
     jmp     moved
 done_right:
-    jmp     gameLoop
+    jmp     moveFailed
 :
-
 
     ;
     ; Action
@@ -332,10 +334,14 @@ done_right:
     ;
     jmp     gameLoop
 
+moveFailed:
+    jsr     sound_fail
+    jmp     gameLoop
 
 moved:
     lda     #ACTION_PASSIVE
     sta     checkPassive
+    jsr     sound_walk
     jmp     gameLoop
 
     ;---------------------------------
@@ -352,6 +358,7 @@ do_action:
     lda     actionCommandTable,y
     sta     actionCommand
     jsr     readAction
+    jsr     sound_action
     jmp     gameLoop
 
 
@@ -813,6 +820,29 @@ nextPage:   .byte   0
     sta     LOWSCR      ; Display page 1
     sta     DHIRESON    ; Annunciator 2 On
     sta     SET80VID    ; 80 column on
+
+    ; Testing if we can use B&W mode
+    ; Following code from Antoine Vignau
+    ; http://www.brutaldeluxe.fr/products/apple2/brazil.html - There is Merlin source code to set the softswitches to display dhgr in b&w
+
+;     sta $c052 ; FORCE MONOCHROME 560*192
+;     sta $c057
+;     sta $c050
+;     sta $c054
+;     LDX #2 ; BARBARE, NON?
+; DCKD:
+;     sta $c001
+;     STA $C05D
+;     STA $C00C
+;     STA $C05E
+;     STA $C05F
+;     sta $c00d
+;     sta $c05e
+;     DEX
+;     BNE DCKD
+
+    ; end of B&W code
+
     rts
 
 .endproc
