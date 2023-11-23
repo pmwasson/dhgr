@@ -320,12 +320,14 @@ set_small:
     cmp     #$10
     bne     set_color_mode
 ; set B&W mode
+    jsr     setMonochromeMode
     jsr     inline_print
-    .byte   "Binary",13,0
+    .byte   "Black & White",13,0
     lda     #$20
     sta     colorMode
     jmp     reset_loop
 set_color_mode:
+    jsr     setColorMode
     jsr     inline_print
     .byte   "Color",13,0
     lda     #$10
@@ -2449,6 +2451,45 @@ exit:
 
 .endproc
 
+;-----------------------------------------------------------------------------
+; setMonochromeMode
+;
+; Force into monochrome mode
+;-----------------------------------------------------------------------------
+.proc setMonochromeMode
+    sta     MIXCLR
+    sta     HIRES
+    sta     TXTCLR
+    sta     LOWSCR
+    ldx     #2
+:
+    sta     SET80COL
+    sta     SET80VID 
+    sta     CLR80VID
+    sta     DHIRESON
+    sta     DHIRESOFF
+    sta     SET80VID 
+    sta     DHIRESON
+    dex
+    bne     :-
+    sta     MIXSET      ; Mixed
+    rts
+.endproc
+
+;-----------------------------------------------------------------------------
+; setColorMode
+;
+; Reset into color mode
+;-----------------------------------------------------------------------------
+.proc setColorMode
+    sta     TXTCLR      ; Graphics
+    sta     HIRES       ; Hi-res
+    sta     MIXSET      ; Mixed
+    sta     LOWSCR      ; Display page 1
+    sta     DHIRESON    ; Annunciator 2 On
+    sta     SET80VID    ; 80 column on
+    rts
+.endproc
 
 ;-----------------------------------------------------------------------------
 ; Global Variables
