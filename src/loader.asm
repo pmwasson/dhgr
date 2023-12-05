@@ -45,9 +45,10 @@ MAPSTART        :=  $6000
 MAPLENGTH       =   64*64*2
 MAPEND          :=  READBUFFER + MAPLENGTH - 1
 
-DIALOGSTART     :=  $8000
-DIALOGLENGTH    =   $1000
-DIALOGEND       :=  READBUFFER + DIALOGLENGTH - 1
+; Not yet implemented
+; DIALOGSTART     :=  $8000
+; DIALOGLENGTH    =   $1000
+; DIALOGEND       :=  READBUFFER + DIALOGLENGTH - 1
 
 BGSTART         :=  $9000
 BGLENGTH        =   128*64

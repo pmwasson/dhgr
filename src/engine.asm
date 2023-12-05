@@ -258,7 +258,7 @@ screenPtr1Copy: .byte   0
 
 drawTile:
 
-    ldx     #16             ; 8 lines
+    ldx     #16             ; 16 lines
 
 drawLoop:
     ldy     #0

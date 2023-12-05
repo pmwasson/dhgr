@@ -13,7 +13,7 @@
 
 ; Zero Page
 ;---------------------------------------------------------
-; Safe zero page locations from Inside the Apple IIe:
+; Safe zero page locations from Inside the Apple IIe (table 2-5):
 ;
 ;                         $06 $07 
 ; $08 $09
@@ -21,8 +21,7 @@
 ;                         $CE $CF
 ;                             $D7
 ;             $E3
-; $E8 
-;                 $EC $ED $EE $EF
+;             $EB $EC $ED $EE $EF
 ;         $FA $FB $FC $FD $FE $FF 
 
 ; ROM defined
