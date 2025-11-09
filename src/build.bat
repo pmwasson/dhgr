@@ -44,13 +44,13 @@ copy ..\disk\template_prodos.dsk dhgr_prodos.dsk
 
 :: Put boot program first
 
+:: Toolbox
+java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk dhgr.system sys < C:\cc65\target\apple2\util\loader.system
+java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk dhgr bin < dhgr.apple2
+
 :: Loader
 java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk loader.system sys < C:\cc65\target\apple2\util\loader.system
 java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk loader bin < loader.apple2 
-
-:: Toolbox
-java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk dhgr.system sys < C:\cc65\target\apple2\util\loader.system
-java -jar C:\jar\AppleCommander.jar -as dhgr_prodos.dsk dhgr bin < dhgr.apple2 
 
 :: Engine
 :: java -jar C:\jar\AppleCommander.jar -p  dhgr_prodos.dsk engine.system sys < C:\cc65\target\apple2\util\loader.system
